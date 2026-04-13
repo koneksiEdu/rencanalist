@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.jadwalkeun.app',
-  appName: 'Jadwalkeun',
+  appId: 'com.dodgerusher.chan',
+  appName: 'The Dodge Rusher',
   webDir: 'dist'
 };
 
