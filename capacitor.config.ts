@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'ru.be.rusher',
-  appName: 'Be RUSHER',
+  appId: 'com.geser.in',
+  appName: 'Geser-In',
   webDir: 'dist'
 };
 
