@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.geser.in',
-  appName: 'Geser-In',
+  appId: 'com.halanghindar.app',
+  appName: 'Halang Hindar',
   webDir: 'dist'
 };
 
