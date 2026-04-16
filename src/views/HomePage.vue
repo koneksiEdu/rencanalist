@@ -1,19 +1,18 @@
 <template>
   <div class="root">
-    <!-- GAME FRAME -->
     <div class="frame">
       <canvas ref="gc"></canvas>
 
       <!-- START -->
       <div v-if="state === 'start'" class="screen">
         <div class="screen-inner">
-          <div class="badge">ARCADE RACER</div>
-          <h1 class="title-main">Halang<br><span class="title-accent">HINDAR</span></h1>
-          <p class="subtitle">Hindari rintangan · Kumpulkan NOS<br>Berani pakai NOS saat berbahaya = BONUS!</p>
-          <button class="btn-start" @click="beginGame">MULAI BALAPAN</button>
+          <div class="badge">SPACE ARCADE</div>
+          <h1 class="title-main">To Space To<br><span class="title-accent">Dodge</span></h1>
+          <p class="subtitle">Hindari asteroid · Tembak untuk poin bonus<br>Kumpulkan ammo dari puing yang lolos!</p>
+          <button class="btn-start" @click="beginGame">MULAI MISI</button>
           <div class="hint-row">
             <span>◀ GESER</span>
-            <span>NOS = RISIKO + REWARD</span>
+            <span>🔫 TEMBAK ASTEROID</span>
             <span>GESER ▶</span>
           </div>
         </div>
@@ -22,7 +21,7 @@
       <!-- GAME OVER -->
       <div v-if="state === 'over'" class="screen">
         <div class="screen-inner">
-          <div class="badge danger">CRASH!</div>
+          <div class="badge danger">KAPAL HANCUR!</div>
           <div class="over-score-label">SKOR AKHIR</div>
           <div class="over-score">{{ score }}</div>
           <div class="hs-line" :class="{ gold: score >= highScore }">
@@ -39,8 +38,8 @@
               <div class="sk">WAKTU</div>
             </div>
             <div class="stat">
-              <div class="sv">{{ nosBonus }}</div>
-              <div class="sk">NOS BONUS</div>
+              <div class="sv">{{ shootBonus }}</div>
+              <div class="sk">TEMBAK</div>
             </div>
             <div class="stat">
               <div class="sv">{{ dodgeCount }}</div>
@@ -69,23 +68,23 @@
       </div>
     </div>
 
-    <!-- NOS STATUS BAR -->
-    <div class="nos-panel" :class="{ active: nosActive, ready: nosStack >= NOS_MAX && !nosActive }">
-      <div class="nos-pips">
+    <!-- AMMO STATUS BAR -->
+    <div class="ammo-panel" :class="{ ready: ammoStack >= 1 }">
+      <div class="ammo-pips">
         <div
-          v-for="i in NOS_MAX" :key="i"
-          class="np"
-          :class="{ f: i <= nosStack, a: nosActive, r: nosStack >= NOS_MAX && !nosActive }"
+          v-for="i in AMMO_MAX" :key="i"
+          class="ap"
+          :class="{ f: i <= ammoStack, r: i <= ammoStack && ammoStack >= 1 }"
         ></div>
       </div>
-      <div class="nos-info">
-        <span class="nos-tag">NOS</span>
-        <span class="nos-status">
-          <template v-if="nosActive">⚡ AKTIF — BONUS x{{ nosMultiplier.toFixed(1) }}</template>
-          <template v-else-if="nosStack >= NOS_MAX">SIAP! TEKAN BOOST</template>
-          <template v-else>{{ nosStack }}/{{ NOS_MAX }} pip</template>
+      <div class="ammo-info">
+        <span class="ammo-tag">AMMO</span>
+        <span class="ammo-status">
+          <template v-if="ammoStack >= AMMO_MAX">PENUH! TEMBAK!</template>
+          <template v-else-if="ammoStack >= 1">{{ ammoStack }}/{{ AMMO_MAX }} — SIAP TEMBAK</template>
+          <template v-else>Tunggu asteroid lewat</template>
         </span>
-        <span v-if="nosActive" class="nos-risk">⚠ BAHAYA GANDA</span>
+        <span class="ammo-bonus" v-if="lastShotBonus > 0">+{{ lastShotBonus }}</span>
       </div>
     </div>
 
@@ -96,14 +95,14 @@
       </button>
 
       <button
-        class="cb nos"
-        :class="{ 'nos-r': nosStack >= NOS_MAX && !nosActive, 'nos-a': nosActive }"
-        :disabled="nosStack < NOS_MAX || nosActive"
-        @touchstart.prevent="activateNos"
-        @mousedown.prevent="activateNos"
+        class="cb shoot"
+        :class="{ 'shoot-r': ammoStack >= 1, 'shoot-empty': ammoStack < 1 }"
+        :disabled="ammoStack < 1"
+        @touchstart.prevent="shootBullet"
+        @mousedown.prevent="shootBullet"
       >
-        <div class="nos-icon">⚡</div>
-        <div class="nos-label">{{ nosActive ? 'AKTIF' : nosStack >= NOS_MAX ? 'BOOST!' : 'NOS' }}</div>
+        <div class="shoot-icon">⚡</div>
+        <div class="shoot-label">{{ ammoStack >= 1 ? 'TEMBAK!' : 'AMMO: ' + ammoStack + '/' + AMMO_MAX }}</div>
       </button>
 
       <button class="cb right" @touchstart.prevent="moveRight" @mousedown.prevent="moveRight">
@@ -126,12 +125,11 @@ const highScore  = ref(0)
 const level      = ref(1)
 const elapsed    = ref(0)
 const dodgeCount = ref(0)
-const nosBonus   = ref(0)
-const nosMultiplier = ref(1.0)
+const shootBonus = ref(0)
+const lastShotBonus = ref(0)
 
-const NOS_MAX    = 5
-const nosStack   = ref(0)
-const nosActive  = ref(false)
+const AMMO_MAX   = 5
+const ammoStack  = ref(0)
 
 const W = 320
 const H = 500
@@ -139,43 +137,67 @@ const H = 500
 const LANES        = 3
 const LANE_W       = W / LANES
 const LANE_CENTERS = [LANE_W * 0.5, LANE_W * 1.5, LANE_W * 2.5]
-const GROUND       = H - 70
+const SHIP_Y       = H - 70
 
 const LEVEL_THRESHOLDS = [0, 12, 28, 48, 72, 102]
-const LEVEL_SPEEDS     = [170, 230, 300, 380, 470, 570]
-const LEVEL_INTERVALS  = [1.65, 1.4, 1.15, 0.95, 0.78, 0.6]
+const LEVEL_SPEEDS     = [150, 200, 270, 340, 420, 510]
+const LEVEL_INTERVALS  = [1.7, 1.45, 1.2, 0.98, 0.8, 0.62]
 
-let obstacles    = []
+let asteroids    = []
+let bullets      = []
 let particles    = []
 let floatTexts   = []
-let parallaxA    = [] // far — dots/stars
-let parallaxB    = [] // mid — trees/poles
-let parallaxC    = [] // near — road marks
+let stars        = []    // far parallax
+let nebulae      = []    // mid parallax - nebula clouds
+let dustLines    = []    // near parallax - speed lines
 
 let elapsedRaw   = 0
 let lastTime     = 0
 let spawnTimer   = 0
-let spawnInterval = 1.65
-let currentSpeed = 170
+let spawnInterval = 1.7
+let currentSpeed = 150
 let warningFlash = 0
 let playerLane   = 1
 let targetX      = LANE_CENTERS[1]
 let currentX     = LANE_CENTERS[1]
 let dodges       = 0
 let shakeAmt     = 0
-let nosTimer     = 0
-let nosSessionBonus = 0
-const NOS_DURATION    = 3.5
-const NOS_SPEED_MULT  = 2.5
-const NOS_SCORE_MULT  = 3.0
+let lastBonusTimer = 0
 
 function initParallax() {
-  parallaxA = []
-  parallaxB = []
-  parallaxC = []
-  for (let i = 0; i < 20; i++) parallaxA.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() })
-  for (let i = 0; i < 8; i++) parallaxB.push({ x: Math.random() < 0.5 ? 5 + Math.random() * 18 : W - 5 - Math.random() * 18, y: Math.random() * H, h: 20 + Math.random() * 40 })
-  for (let i = 0; i < 6; i++) parallaxC.push({ y: (H / 6) * i })
+  stars   = []
+  nebulae = []
+  dustLines = []
+  // Stars — various sizes and brightness
+  for (let i = 0; i < 60; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 0.4 + Math.random() * 1.8,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: 0.05 + Math.random() * 0.15
+    })
+  }
+  // Nebulae — large soft blobs for depth
+  for (let i = 0; i < 5; i++) {
+    nebulae.push({
+      x: 20 + Math.random() * (W - 40),
+      y: Math.random() * H,
+      rx: 30 + Math.random() * 50,
+      ry: 20 + Math.random() * 35,
+      hue: [240, 280, 200, 320, 260][i],
+      alpha: 0.04 + Math.random() * 0.06,
+      speed: 0.3 + Math.random() * 0.4
+    })
+  }
+  // Dust/speed streaks
+  for (let i = 0; i < 8; i++) {
+    dustLines.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      len: 8 + Math.random() * 20
+    })
+  }
 }
 
 function moveLeft() {
@@ -196,20 +218,26 @@ function moveRight() {
   dodgeCount.value = dodges
 }
 
-function activateNos() {
+function shootBullet() {
   if (state.value !== 'play') return
-  if (nosStack.value < NOS_MAX || nosActive.value) return
-  nosActive.value = true
-  nosStack.value  = 0
-  nosTimer        = NOS_DURATION
-  nosMultiplier.value = 1.0
-  nosSessionBonus = 0
+  if (ammoStack.value < 1) return
+  ammoStack.value--
+  bullets.push({
+    x: currentX,
+    y: SHIP_Y - 20,
+    vy: -480,
+    life: 1,
+    w: 4,
+    h: 14
+  })
+  // Muzzle flash particles
+  emitParticles(currentX, SHIP_Y - 25, '#7dd3fc', 6)
 }
 
 function onKeyDown(e) {
   if (e.key === 'ArrowLeft')  { e.preventDefault(); moveLeft() }
   if (e.key === 'ArrowRight') { e.preventDefault(); moveRight() }
-  if (e.key === ' ' || e.key === 'n' || e.key === 'N') { e.preventDefault(); activateNos() }
+  if (e.key === ' ' || e.key === 'z' || e.key === 'Z') { e.preventDefault(); shootBullet() }
 }
 
 function beginGame() {
@@ -218,40 +246,35 @@ function beginGame() {
   level.value      = 1
   elapsed.value    = 0
   dodgeCount.value = 0
-  nosBonus.value   = 0
-  nosStack.value   = 0
-  nosActive.value  = false
+  shootBonus.value = 0
+  ammoStack.value  = 0
+  lastShotBonus.value = 0
 
-  obstacles    = []
+  asteroids    = []
+  bullets      = []
   particles    = []
   floatTexts   = []
   elapsedRaw   = 0
   lastTime     = 0
   spawnTimer   = 0
-  spawnInterval = 1.65
-  currentSpeed = 170
+  spawnInterval = 1.7
+  currentSpeed = 150
   warningFlash = 0
   playerLane   = 1
   targetX      = LANE_CENTERS[1]
   currentX     = LANE_CENTERS[1]
   dodges       = 0
   shakeAmt     = 0
-  nosTimer     = 0
-  nosSessionBonus = 0
-  nosMultiplier.value = 1.0
+  lastBonusTimer = 0
   initParallax()
   if (!animId) animId = requestAnimationFrame(loop)
 }
 
 function endGame() {
-  state.value      = 'over'
-  elapsed.value    = elapsedRaw
-  if (nosActive.value) {
-    nosBonus.value += nosSessionBonus
-  }
+  state.value  = 'over'
+  elapsed.value = elapsedRaw
   if (score.value > highScore.value) highScore.value = score.value
-  shakeAmt    = 1.0
-  nosActive.value = false
+  shakeAmt = 1.0
 }
 
 function getLevel(secs) {
@@ -269,58 +292,87 @@ function getLevelProgress(secs) {
   return Math.min((secs - start) / (next - start), 1)
 }
 
-const OBS_TYPES = [
-  { type: 'barrel',  w: 22, h: 22, col: '#c0392b', col2: '#e74c3c' },
-  { type: 'cone',    w: 18, h: 26, col: '#e67e22', col2: '#f39c12' },
-  { type: 'truck',   w: 34, h: 20, col: '#2c3e50', col2: '#34495e' },
-  { type: 'oil',     w: 38, h: 12, col: '#1a1a2e', col2: '#16213e' },
-  { type: 'barrier', w: 44, h: 10, col: '#c0392b', col2: '#e74c3c' },
+// Asteroid shapes: different rock silhouettes
+const ASTEROID_TYPES = [
+  { type: 'small',  w: 20, h: 20, pts: 7, col: '#6b7280', col2: '#9ca3af', hp: 1 },
+  { type: 'medium', w: 30, h: 28, pts: 8, col: '#4b5563', col2: '#6b7280', hp: 2 },
+  { type: 'large',  w: 42, h: 38, pts: 9, col: '#374151', col2: '#4b5563', hp: 3 },
+  { type: 'iron',   w: 24, h: 24, pts: 6, col: '#7c3aed', col2: '#a78bfa', hp: 1 }, // purple = special
+  { type: 'ice',    w: 26, h: 22, pts: 8, col: '#0e7490', col2: '#67e8f9', hp: 1 }, // cyan = ice
 ]
 
-function spawnObs() {
+// Pre-generate asteroid polygon points
+function genAsteroidPts(cx, cy, r, count) {
+  const pts = []
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2
+    const dist = r * (0.65 + Math.random() * 0.35)
+    pts.push([cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist])
+  }
+  return pts
+}
+
+function spawnAsteroid() {
   const used = new Set()
   let count = 1
-  if (level.value >= 4 && Math.random() < 0.3) count = 2
-  if (nosActive.value) count = Math.min(count + (Math.random() < 0.6 ? 1 : 0), LANES)
+  if (level.value >= 3 && Math.random() < 0.25) count = 2
+  if (level.value >= 5 && Math.random() < 0.2)  count = Math.min(count + 1, LANES)
 
   for (let c = 0; c < count; c++) {
     let lane, tries = 0
     do { lane = Math.floor(Math.random() * LANES); tries++ } while (used.has(lane) && tries < 8)
     used.add(lane)
-    const t   = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)]
-    const spd = nosActive.value ? currentSpeed / NOS_SPEED_MULT : currentSpeed
-    obstacles.push({ lane, x: LANE_CENTERS[lane], y: -50, w: t.w, h: t.h, col: t.col, col2: t.col2, type: t.type, speed: spd, dodged: false })
+
+    const t = ASTEROID_TYPES[Math.floor(Math.random() * ASTEROID_TYPES.length)]
+    const rx = Math.max(t.w, t.h) / 2
+    const pts = genAsteroidPts(0, 0, rx, t.pts)
+    const rot = Math.random() * Math.PI * 2
+    const rotSpeed = (Math.random() - 0.5) * 1.2
+
+    asteroids.push({
+      lane,
+      x: LANE_CENTERS[lane],
+      y: -60,
+      w: t.w, h: t.h,
+      col: t.col, col2: t.col2,
+      type: t.type,
+      hp: t.hp,
+      maxHp: t.hp,
+      speed: currentSpeed,
+      pts,
+      rot,
+      rotSpeed,
+      dodged: false,
+      hitFlash: 0
+    })
   }
 }
 
 function emitParticles(x, y, col, n = 14) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2
-    const s = 50 + Math.random() * 130
-    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 2 + Math.random() * 4, col, life: 1 })
+    const s = 40 + Math.random() * 120
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 1.5 + Math.random() * 3.5, col, life: 1 })
+  }
+}
+
+function emitAsteroidDebris(x, y, col) {
+  for (let i = 0; i < 10; i++) {
+    const a = Math.random() * Math.PI * 2
+    const s = 30 + Math.random() * 80
+    const pts = genAsteroidPts(0, 0, 3 + Math.random() * 6, 5)
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 0, col, life: 1, pts, rot: Math.random() * Math.PI })
   }
 }
 
 function spawnFloatText(x, y, text, col) {
-  floatTexts.push({ x, y, vy: -60, text, col, life: 1 })
+  floatTexts.push({ x, y, vy: -55, text, col, life: 1 })
 }
 
 function update(dt) {
   elapsedRaw += dt
   spawnTimer += dt
-
-  if (nosActive.value) {
-    nosTimer -= dt
-    nosMultiplier.value = Math.min(nosMultiplier.value + dt * 1.2, NOS_SCORE_MULT)
-    if (nosTimer <= 0) {
-      nosActive.value = false
-      nosTimer = 0
-      nosBonus.value += nosSessionBonus
-      nosSessionBonus = 0
-    }
-  }
-
-  const effectiveSpeed = nosActive.value ? currentSpeed * NOS_SPEED_MULT : currentSpeed
+  if (lastBonusTimer > 0) lastBonusTimer -= dt
 
   const newLevel = getLevel(elapsedRaw)
   if (newLevel !== level.value) {
@@ -330,174 +382,262 @@ function update(dt) {
     spawnInterval = LEVEL_INTERVALS[Math.min(newLevel - 1, LEVEL_INTERVALS.length - 1)]
   }
   if (warningFlash > 0) warningFlash = Math.max(0, warningFlash - dt)
-  if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnObs() }
+  if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnAsteroid() }
 
-  currentX += (targetX - currentX) * Math.min(1, 16 * dt)
+  currentX += (targetX - currentX) * Math.min(1, 18 * dt)
   if (Math.abs(currentX - targetX) < 0.5) currentX = targetX
 
-  // Parallax update
-  const spA = effectiveSpeed * 0.08
-  const spB = effectiveSpeed * 0.22
-  const spC = effectiveSpeed * 0.5
-  for (const p of parallaxA) { p.y += spA * dt; if (p.y > H) p.y -= H }
-  for (const p of parallaxB) { p.y += spB * dt; if (p.y > H + 50) p.y -= H + 80 }
-  for (const p of parallaxC) { p.y += spC * dt; if (p.y > H) p.y -= H }
+  // Parallax
+  const t = elapsedRaw
+  for (const s of stars) {
+    s.y += s.speed * currentSpeed * 0.04 * dt
+    s.twinkle += dt * 2
+    if (s.y > H) s.y -= H
+  }
+  for (const n of nebulae) {
+    n.y += n.speed * dt
+    if (n.y > H + 60) n.y -= H + 80
+  }
+  for (const d of dustLines) {
+    d.y += currentSpeed * 0.6 * dt
+    if (d.y > H) d.y -= H
+  }
 
-  const base = Math.floor(elapsedRaw * 8)
-  score.value = base + (nosActive.value ? Math.floor(nosSessionBonus) : 0) + nosBonus.value
+  score.value = Math.floor(elapsedRaw * 8) + shootBonus.value
 
   if (shakeAmt > 0) shakeAmt = Math.max(0, shakeAmt - dt * 4)
 
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i]
+  // Update bullets
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i]
+    b.y += b.vy * dt
+    if (b.y < -20) { bullets.splice(i, 1); continue }
+
+    // Check bullet vs asteroids
+    let hit = false
+    for (let j = asteroids.length - 1; j >= 0; j--) {
+      const a = asteroids[j]
+      const dx = Math.abs(b.x - a.x), dy = Math.abs(b.y - a.y)
+      if (dx < a.w / 2 + 4 && dy < a.h / 2 + 4) {
+        a.hp--
+        a.hitFlash = 0.18
+        hit = true
+        if (a.hp <= 0) {
+          const bonus = a.maxHp * 50 + (a.type === 'iron' ? 30 : 0) + (a.type === 'ice' ? 20 : 0)
+          shootBonus.value += bonus
+          lastShotBonus.value = bonus
+          lastBonusTimer = 1.5
+          score.value = Math.floor(elapsedRaw * 8) + shootBonus.value
+          emitAsteroidDebris(a.x, a.y, a.col2)
+          spawnFloatText(a.x, a.y - 10, '+' + bonus, '#fde68a')
+          asteroids.splice(j, 1)
+        }
+        break
+      }
+    }
+    if (hit) { bullets.splice(i, 1); continue }
+  }
+
+  // Update asteroids
+  for (let i = asteroids.length - 1; i >= 0; i--) {
+    const o = asteroids[i]
     o.y += o.speed * dt
-    if (nosActive.value) o.y += (effectiveSpeed - o.speed) * dt
+    o.rot += o.rotSpeed * dt
+    if (o.hitFlash > 0) o.hitFlash -= dt
 
     if (o.y > H + 60) {
       if (!o.dodged) {
-        if (nosStack.value < NOS_MAX && !nosActive.value) nosStack.value++
-        if (nosActive.value) {
-          const bonus = Math.floor(50 * nosMultiplier.value)
-          nosSessionBonus += bonus
-          spawnFloatText(o.x, GROUND - 40, '+' + bonus, '#f1c40f')
-        }
+        // Give ammo when asteroid passes
+        if (ammoStack.value < AMMO_MAX) ammoStack.value++
       }
-      obstacles.splice(i, 1)
+      asteroids.splice(i, 1)
       continue
     }
 
-    const px = currentX, py = GROUND - 10
-    const pw = 14, ph = 22
-    const ow = o.w * 0.65, oh = o.h * 0.65
-
+    // Collision with ship
+    const px = currentX, py = SHIP_Y
+    const pw = 12, ph = 20
+    const ow = o.w * 0.6, oh = o.h * 0.6
     if (
       px - pw < o.x + ow / 2 && px + pw > o.x - ow / 2 &&
       py - ph < o.y + oh / 2 && py + ph > o.y - oh / 2
     ) {
-      emitParticles(px, py, '#e74c3c', 18)
+      emitParticles(px, py, '#f97316', 20)
+      emitParticles(px, py, '#fbbf24', 10)
       endGame()
       return
     }
   }
 
+  // Update particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 220 * dt; p.life -= dt * 1.8
+    p.x += p.vx * dt; p.y += p.vy * dt
+    p.vy += 40 * dt // slight gravity
+    p.life -= dt * 1.6
+    if (p.pts) p.rot += dt * 3
     if (p.life <= 0) particles.splice(i, 1)
   }
 
   for (let i = floatTexts.length - 1; i >= 0; i--) {
     const f = floatTexts[i]
-    f.y += f.vy * dt; f.life -= dt * 1.5
+    f.y += f.vy * dt; f.life -= dt * 1.4
     if (f.life <= 0) floatTexts.splice(i, 1)
   }
 }
 
-function drawObstacle(o) {
-  const x = o.x, y = o.y
+function drawAsteroid(o) {
   ctx.save()
-  if (nosActive.value) { ctx.shadowColor = 'rgba(241,196,15,0.5)'; ctx.shadowBlur = 6 }
+  ctx.translate(o.x, o.y)
+  ctx.rotate(o.rot)
 
-  if (o.type === 'barrel') {
-    ctx.fillStyle = o.col
-    ctx.beginPath(); ctx.ellipse(x, y, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = o.col2; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.ellipse(x, y - o.h * 0.15, o.w * 0.45, o.h * 0.18, 0, 0, Math.PI * 2); ctx.stroke()
-
-  } else if (o.type === 'cone') {
-    ctx.fillStyle = o.col
-    ctx.beginPath()
-    ctx.moveTo(x, y - o.h / 2)
-    ctx.lineTo(x - o.w / 2, y + o.h / 2)
-    ctx.lineTo(x + o.w / 2, y + o.h / 2)
-    ctx.closePath(); ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(x - o.w / 2, y + o.h / 6, o.w, 3)
-
-  } else if (o.type === 'truck') {
-    ctx.fillStyle = o.col2
-    ctx.fillRect(x - o.w / 2, y - o.h / 2, o.w * 0.65, o.h)
-    ctx.fillStyle = o.col
-    ctx.fillRect(x - o.w / 2 + o.w * 0.65, y - o.h / 2, o.w * 0.35, o.h)
-    ctx.fillStyle = 'rgba(100,200,255,0.5)'
-    ctx.fillRect(x - o.w / 2 + o.w * 0.67, y - o.h / 2 + 2, o.w * 0.28, o.h * 0.45)
-    ctx.fillStyle = '#e74c3c'
-    ctx.fillRect(x - o.w / 2, y - o.h / 2, 4, 4)
-    ctx.fillRect(x - o.w / 2, y + o.h / 2 - 4, 4, 4)
-
-  } else if (o.type === 'oil') {
-    ctx.fillStyle = o.col
-    ctx.beginPath(); ctx.ellipse(x, y, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(80,80,200,0.3)'
-    ctx.beginPath(); ctx.ellipse(x - 4, y - 2, o.w * 0.22, o.h * 0.3, -0.4, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(200,80,200,0.3)'
-    ctx.beginPath(); ctx.ellipse(x + 4, y + 2, o.w * 0.18, o.h * 0.28, 0.5, 0, Math.PI * 2); ctx.fill()
-
-  } else if (o.type === 'barrier') {
-    const bw = o.w, bh = o.h
-    ctx.fillStyle = o.col
-    ctx.fillRect(x - bw / 2, y - bh / 2, bw, bh)
-    ctx.fillStyle = '#fff'
-    for (let s = 0; s < 4; s++) ctx.fillRect(x - bw / 2 + s * (bw / 4), y - bh / 2, bw / 8, bh)
+  // Hit flash
+  if (o.hitFlash > 0) {
+    ctx.shadowColor = '#ffffff'
+    ctx.shadowBlur = 12
   }
 
-  ctx.shadowBlur = 0
+  // Main rock shape
+  ctx.beginPath()
+  const pts = o.pts
+  ctx.moveTo(pts[0][0], pts[0][1])
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+  ctx.closePath()
+
+  // Fill with gradient-like coloring
+  ctx.fillStyle = o.hitFlash > 0 ? '#ffffff' : o.col
+  ctx.fill()
+
+  // Rock texture lines
+  ctx.strokeStyle = o.col2
+  ctx.lineWidth = 0.8
+  ctx.globalAlpha = 0.5
+  ctx.stroke()
+
+  // Crater detail
+  ctx.globalAlpha = 0.3
+  ctx.fillStyle = o.col2
+  const r = Math.max(o.w, o.h) * 0.08
+  ctx.beginPath()
+  ctx.arc(-r * 2, -r, r, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(r * 1.5, r * 1.5, r * 0.7, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Special type glow
+  if (o.type === 'iron') {
+    ctx.globalAlpha = 0.25
+    ctx.fillStyle = '#a78bfa'
+    ctx.beginPath()
+    ctx.arc(0, 0, Math.max(o.w, o.h) * 0.4, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (o.type === 'ice') {
+    ctx.globalAlpha = 0.2
+    ctx.fillStyle = '#67e8f9'
+    ctx.beginPath()
+    ctx.arc(0, 0, Math.max(o.w, o.h) * 0.45, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
   ctx.restore()
 }
 
-function drawBike(x, y) {
+function drawSpaceship(x, y) {
   ctx.save()
-  const nos = nosActive.value
-  // exhaust flames
-  if (nos) {
-    const fl = 4 + 5 * Math.random()
-    const grad = ctx.createLinearGradient(x, y + 10, x, y + 10 + fl)
-    grad.addColorStop(0, '#f1c40f')
-    grad.addColorStop(1, 'rgba(241,196,15,0)')
-    ctx.fillStyle = grad
-    ctx.fillRect(x - 5, y + 10, 10, fl)
-  }
 
-  // rear wheel
-  ctx.fillStyle = nos ? '#f1c40f' : '#2c3e50'
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 7, 4, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = '#95a5a6'; ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 7, 4, 0, 0, Math.PI * 2); ctx.stroke()
-
-  // front wheel
-  ctx.fillStyle = nos ? '#f1c40f' : '#2c3e50'
-  ctx.beginPath(); ctx.ellipse(x, y - 14, 5, 3, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = '#95a5a6'; ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.ellipse(x, y - 14, 5, 3, 0, 0, Math.PI * 2); ctx.stroke()
-
-  // frame / body
-  ctx.fillStyle = nos ? '#f39c12' : '#e74c3c'
+  // Engine glow / thrust flame
+  const thrustLen = 14 + Math.random() * 8
+  const grad = ctx.createLinearGradient(x, y + 18, x, y + 18 + thrustLen)
+  grad.addColorStop(0, 'rgba(99,179,237,0.9)')
+  grad.addColorStop(0.4, 'rgba(59,130,246,0.6)')
+  grad.addColorStop(1, 'rgba(59,130,246,0)')
+  ctx.fillStyle = grad
+  // Left thruster
   ctx.beginPath()
-  ctx.moveTo(x - 4, y + 8)
-  ctx.lineTo(x - 6, y - 4)
-  ctx.lineTo(x - 2, y - 12)
-  ctx.lineTo(x + 2, y - 12)
-  ctx.lineTo(x + 6, y - 4)
-  ctx.lineTo(x + 4, y + 8)
-  ctx.closePath(); ctx.fill()
+  ctx.moveTo(x - 7, y + 14)
+  ctx.lineTo(x - 10, y + 14 + thrustLen)
+  ctx.lineTo(x - 4, y + 14 + thrustLen * 0.6)
+  ctx.closePath()
+  ctx.fill()
+  // Right thruster
+  ctx.beginPath()
+  ctx.moveTo(x + 7, y + 14)
+  ctx.lineTo(x + 10, y + 14 + thrustLen)
+  ctx.lineTo(x + 4, y + 14 + thrustLen * 0.6)
+  ctx.closePath()
+  ctx.fill()
 
-  // seat/tank
-  ctx.fillStyle = nos ? '#e67e22' : '#c0392b'
-  ctx.fillRect(x - 5, y - 6, 10, 6)
+  // Main hull — futuristic triangular fighter
+  // Fuselage
+  ctx.fillStyle = '#1e3a5f'
+  ctx.beginPath()
+  ctx.moveTo(x, y - 22)          // nose tip
+  ctx.lineTo(x - 10, y + 10)     // left body
+  ctx.lineTo(x - 6, y + 16)      // left engine mount
+  ctx.lineTo(x + 6, y + 16)      // right engine mount
+  ctx.lineTo(x + 10, y + 10)     // right body
+  ctx.closePath()
+  ctx.fill()
 
-  // rider body
-  ctx.fillStyle = nos ? '#f1c40f' : '#ecf0f1'
-  ctx.fillRect(x - 4, y - 18, 8, 10)
+  // Cockpit glass
+  ctx.fillStyle = '#7dd3fc'
+  ctx.globalAlpha = 0.8
+  ctx.beginPath()
+  ctx.moveTo(x, y - 18)
+  ctx.lineTo(x - 5, y - 6)
+  ctx.lineTo(x + 5, y - 6)
+  ctx.closePath()
+  ctx.fill()
+  ctx.globalAlpha = 1
 
-  // helmet
-  ctx.fillStyle = nos ? '#e67e22' : '#2c3e50'
-  ctx.beginPath(); ctx.arc(x, y - 21, 5, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = 'rgba(100,200,255,0.6)'
-  ctx.fillRect(x - 3, y - 24, 6, 3)
+  // Wing left
+  ctx.fillStyle = '#1e40af'
+  ctx.beginPath()
+  ctx.moveTo(x - 8, y)
+  ctx.lineTo(x - 20, y + 12)
+  ctx.lineTo(x - 20, y + 16)
+  ctx.lineTo(x - 6, y + 12)
+  ctx.closePath()
+  ctx.fill()
 
-  // handlebar
-  ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(x - 8, y - 10); ctx.lineTo(x + 8, y - 10); ctx.stroke()
+  // Wing right
+  ctx.beginPath()
+  ctx.moveTo(x + 8, y)
+  ctx.lineTo(x + 20, y + 12)
+  ctx.lineTo(x + 20, y + 16)
+  ctx.lineTo(x + 6, y + 12)
+  ctx.closePath()
+  ctx.fill()
+
+  // Wing accent stripe left
+  ctx.fillStyle = '#3b82f6'
+  ctx.globalAlpha = 0.7
+  ctx.fillRect(x - 17, y + 10, 10, 2)
+  // Wing accent stripe right
+  ctx.fillRect(x + 7, y + 10, 10, 2)
+  ctx.globalAlpha = 1
+
+  // Hull center stripe
+  ctx.fillStyle = '#3b82f6'
+  ctx.fillRect(x - 1.5, y - 16, 3, 28)
+
+  // Engine mounts
+  ctx.fillStyle = '#374151'
+  ctx.fillRect(x - 10, y + 12, 6, 6)
+  ctx.fillRect(x + 4, y + 12, 6, 6)
+
+  // Engine glow rings
+  ctx.strokeStyle = '#60a5fa'
+  ctx.lineWidth = 1
+  ctx.globalAlpha = 0.7
+  ctx.beginPath(); ctx.arc(x - 7, y + 15, 3, 0, Math.PI * 2); ctx.stroke()
+  ctx.beginPath(); ctx.arc(x + 7, y + 15, 3, 0, Math.PI * 2); ctx.stroke()
+  ctx.globalAlpha = 1
+
+  // Cannon tips
+  ctx.fillStyle = '#9ca3af'
+  ctx.fillRect(x - 2, y - 24, 4, 4)
 
   ctx.restore()
 }
@@ -508,94 +648,66 @@ function draw() {
     ctx.translate((Math.random() - 0.5) * shakeAmt * 8, (Math.random() - 0.5) * shakeAmt * 8)
   }
 
-  // Sky gradient
-  const sky = ctx.createLinearGradient(0, 0, 0, H)
-  if (nosActive.value) {
-    sky.addColorStop(0, '#0a0510')
-    sky.addColorStop(1, '#1a0820')
-  } else {
-    sky.addColorStop(0, '#06060f')
-    sky.addColorStop(1, '#0d0d1a')
-  }
-  ctx.fillStyle = sky
+  // Deep space background
+  ctx.fillStyle = '#020408'
   ctx.fillRect(0, 0, W, H)
 
-  // Parallax A — stars/dots (far)
-  ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.5)' : 'rgba(255,255,255,0.35)'
-  for (const p of parallaxA) {
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
-  }
-
-  // Road surface
-  ctx.fillStyle = '#0f1014'
-  ctx.fillRect(LANE_W * 0.05, 0, W - LANE_W * 0.1, H)
-
-  // Parallax B — roadside trees / poles (mid)
-  for (const p of parallaxB) {
-    const isLeft = p.x < W / 2
-    if (nosActive.value) {
-      ctx.fillStyle = 'rgba(241,196,15,0.15)'
-    } else {
-      ctx.fillStyle = 'rgba(46,139,87,0.35)'
-    }
-    // trunk
-    ctx.fillRect(p.x - 2, p.y - p.h, 4, p.h)
-    // foliage
+  // Nebula blobs (far parallax)
+  for (const n of nebulae) {
+    ctx.save()
+    ctx.globalAlpha = n.alpha
+    const ng = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.rx)
+    ng.addColorStop(0, `hsl(${n.hue},80%,40%)`)
+    ng.addColorStop(1, 'transparent')
+    ctx.fillStyle = ng
     ctx.beginPath()
-    ctx.arc(p.x, p.y - p.h, 8 + p.h * 0.2, 0, Math.PI * 2)
+    ctx.ellipse(n.x, n.y, n.rx, n.ry, 0, 0, Math.PI * 2)
     ctx.fill()
-    // glow light on pole
-    ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.4)' : 'rgba(255,200,100,0.25)'
-    ctx.beginPath(); ctx.arc(isLeft ? p.x + 6 : p.x - 6, p.y - p.h + 4, 3, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
   }
 
-  // Road edge lines
-  ctx.strokeStyle = nosActive.value ? 'rgba(241,196,15,0.4)' : 'rgba(255,255,255,0.18)'
-  ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(LANE_W * 0.05, 0); ctx.lineTo(LANE_W * 0.05, H); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(W - LANE_W * 0.05, 0); ctx.lineTo(W - LANE_W * 0.05, H); ctx.stroke()
+  // Stars (mid parallax)
+  for (const s of stars) {
+    const twinkle = 0.5 + 0.5 * Math.sin(s.twinkle)
+    ctx.globalAlpha = 0.2 + twinkle * 0.6
+    ctx.fillStyle = s.r > 1.4 ? '#e0f2fe' : '#ffffff'
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
 
-  // Parallax C — dashed lane marks (near)
-  ctx.strokeStyle = nosActive.value ? 'rgba(241,196,15,0.25)' : 'rgba(255,255,255,0.12)'
-  ctx.lineWidth   = 1.5
-  ctx.setLineDash([16, 16])
-  for (const p of parallaxC) {
-    for (let li = 1; li < LANES; li++) {
-      const x = LANE_W * li
-      ctx.beginPath(); ctx.moveTo(x, p.y - 10); ctx.lineTo(x, p.y + 10); ctx.stroke()
-    }
+  // Speed dust streaks (near parallax)
+  ctx.strokeStyle = 'rgba(148,163,184,0.12)'
+  ctx.lineWidth = 0.8
+  for (const d of dustLines) {
+    ctx.beginPath()
+    ctx.moveTo(d.x, d.y - d.len)
+    ctx.lineTo(d.x, d.y)
+    ctx.stroke()
+  }
+
+  // Lane edge subtle glow
+  ctx.strokeStyle = 'rgba(59,130,246,0.08)'
+  ctx.lineWidth = 1
+  ctx.setLineDash([12, 24])
+  for (let li = 1; li < LANES; li++) {
+    const lx = LANE_W * li
+    ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H); ctx.stroke()
   }
   ctx.setLineDash([])
 
-  // NOS speed lines
-  if (nosActive.value) {
-    const t = Date.now() / 1000
-    for (let i = 0; i < 6; i++) {
-      const sx = LANE_W * 0.15 + (i / 6) * (W - LANE_W * 0.3)
-      const alpha = 0.05 + 0.05 * Math.sin(t * 8 + i)
-      ctx.strokeStyle = `rgba(241,196,15,${alpha})`
-      ctx.lineWidth = 1
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx + 8, H); ctx.stroke()
-    }
-    // NOS timer bar top
-    const frac = nosTimer / NOS_DURATION
-    ctx.fillStyle = 'rgba(241,196,15,0.18)'
-    ctx.fillRect(0, 0, W * frac, 5)
-    ctx.fillStyle = 'rgba(241,196,15,0.8)'
-    ctx.fillRect(0, 0, W * frac, 2)
-  }
-
-  // Level progress bar — bottom
+  // Level progress bar
   const pct = getLevelProgress(elapsedRaw)
-  ctx.fillStyle = 'rgba(255,255,255,0.05)'
+  ctx.fillStyle = 'rgba(255,255,255,0.04)'
   ctx.fillRect(0, H - 3, W, 3)
-  ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.7)' : 'rgba(255,255,255,0.35)'
+  ctx.fillStyle = 'rgba(96,165,250,0.6)'
   ctx.fillRect(0, H - 3, W * pct, 3)
 
-  // Level flash
+  // Stage flash
   if (warningFlash > 0) {
     const pulse = Math.abs(Math.sin(warningFlash * 9))
-    ctx.fillStyle = `rgba(255,255,255,${pulse * (warningFlash / 1.5) * 0.1})`
+    ctx.fillStyle = `rgba(96,165,250,${pulse * (warningFlash / 1.5) * 0.08})`
     ctx.fillRect(0, 0, W, H)
     ctx.fillStyle = `rgba(255,255,255,${Math.min(pulse * (warningFlash / 1.5), 0.9)})`
     ctx.font = 'bold 13px monospace'
@@ -604,32 +716,61 @@ function draw() {
     ctx.textAlign = 'left'
   }
 
-  // Obstacles
-  for (const o of obstacles) drawObstacle(o)
-
-  // Particles
-  for (const p of particles) {
+  // Bullets
+  for (const b of bullets) {
     ctx.save()
-    ctx.globalAlpha = Math.max(0, p.life)
-    ctx.fillStyle   = p.col
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+    ctx.shadowColor = '#7dd3fc'
+    ctx.shadowBlur  = 8
+    const bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y - b.h)
+    bg.addColorStop(0, '#7dd3fc')
+    bg.addColorStop(1, 'rgba(125,211,252,0)')
+    ctx.fillStyle = bg
+    ctx.fillRect(b.x - b.w / 2, b.y - b.h, b.w, b.h)
     ctx.restore()
   }
 
-  // Float texts (NOS bonus)
+  // Asteroids
+  for (const o of asteroids) drawAsteroid(o)
+
+  // Particles (rock debris + explosion)
+  for (const p of particles) {
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, p.life)
+    if (p.pts) {
+      // Debris chunk
+      ctx.translate(p.x, p.y)
+      ctx.rotate(p.rot)
+      ctx.fillStyle = p.col
+      ctx.beginPath()
+      ctx.moveTo(p.pts[0][0], p.pts[0][1])
+      for (let i = 1; i < p.pts.length; i++) ctx.lineTo(p.pts[i][0], p.pts[i][1])
+      ctx.closePath()
+      ctx.fill()
+    } else {
+      ctx.fillStyle = p.col
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
+  // Float texts
   for (const f of floatTexts) {
     ctx.save()
     ctx.globalAlpha = Math.max(0, f.life)
     ctx.fillStyle   = f.col
     ctx.font        = 'bold 14px monospace'
     ctx.textAlign   = 'center'
+    ctx.shadowColor = f.col
+    ctx.shadowBlur  = 4
     ctx.fillText(f.text, f.x, f.y)
     ctx.restore()
   }
 
-  // Player bike
+  // Ship
   if (state.value === 'play' || state.value === 'over') {
-    drawBike(currentX, GROUND - 10)
+    drawSpaceship(currentX, SHIP_Y)
   }
 
   ctx.restore()
@@ -667,12 +808,11 @@ onUnmounted(() => {
   align-items: center;
   width: 100%;
   min-height: 100svh;
-  background: #06060f;
+  background: #020408;
   font-family: 'Share Tech Mono', 'Courier New', monospace;
   padding-bottom: 12px;
 }
 
-/* FRAME */
 .frame {
   position: relative;
   width: 320px;
@@ -684,8 +824,8 @@ canvas {
   display: block;
   width: 320px;
   height: 500px;
-  border-left: 1.5px solid rgba(255,255,255,0.08);
-  border-right: 1.5px solid rgba(255,255,255,0.08);
+  border-left: 1px solid rgba(59,130,246,0.12);
+  border-right: 1px solid rgba(59,130,246,0.12);
 }
 
 /* SCREENS */
@@ -696,7 +836,7 @@ canvas {
   align-items: flex-end;
   justify-content: center;
   padding-bottom: 28px;
-  background: linear-gradient(to bottom, rgba(6,6,15,0.1) 0%, rgba(6,6,15,0.97) 55%);
+  background: linear-gradient(to bottom, rgba(2,4,8,0.05) 0%, rgba(2,4,8,0.96) 52%);
 }
 
 .screen-inner {
@@ -710,13 +850,13 @@ canvas {
 .badge {
   font-size: 10px;
   letter-spacing: 0.3em;
-  color: rgba(241,196,15,0.7);
+  color: rgba(96,165,250,0.75);
   padding: 3px 10px;
-  border: 0.5px solid rgba(241,196,15,0.25);
+  border: 0.5px solid rgba(96,165,250,0.25);
   margin-bottom: 14px;
 }
 
-.badge.danger { color: rgba(231,76,60,0.8); border-color: rgba(231,76,60,0.3); }
+.badge.danger { color: rgba(251,113,133,0.85); border-color: rgba(251,113,133,0.3); }
 
 .title-main {
   font-size: 62px;
@@ -728,53 +868,53 @@ canvas {
   margin: 0 0 18px;
 }
 
-.title-accent { color: #f1c40f; }
+.title-accent { color: #60a5fa; }
 
 .subtitle {
   font-size: 10px;
-  letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.1em;
+  color: rgba(148,163,184,0.6);
   text-align: center;
-  line-height: 1.9;
+  line-height: 2;
   margin: 0 0 26px;
 }
 
-.over-score-label { font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
+.over-score-label { font-size: 9px; letter-spacing: 0.2em; color: rgba(148,163,184,0.4); margin-bottom: 6px; }
 .over-score { font-size: 76px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 8px; }
 
-.hs-line { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 20px; letter-spacing: 0.08em; }
-.hs-line.gold { color: #f1c40f; }
+.hs-line { font-size: 11px; color: rgba(148,163,184,0.35); margin-bottom: 20px; letter-spacing: 0.08em; }
+.hs-line.gold { color: #fbbf24; }
 
 .stat-row {
   display: flex;
-  border: 0.5px solid rgba(255,255,255,0.12);
+  border: 0.5px solid rgba(59,130,246,0.15);
   margin-bottom: 24px;
 }
 
-.stat { padding: 10px 14px; text-align: center; border-right: 0.5px solid rgba(255,255,255,0.12); }
+.stat { padding: 10px 14px; text-align: center; border-right: 0.5px solid rgba(59,130,246,0.15); }
 .stat:last-child { border-right: none; }
 .sv { font-size: 22px; font-weight: 600; color: #fff; }
-.sk { font-size: 8px; color: rgba(255,255,255,0.28); letter-spacing: 0.12em; margin-top: 2px; }
+.sk { font-size: 8px; color: rgba(148,163,184,0.4); letter-spacing: 0.12em; margin-top: 2px; }
 
 .btn-start {
   background: transparent;
-  border: 0.5px solid rgba(241,196,15,0.4);
+  border: 0.5px solid rgba(96,165,250,0.4);
   padding: 13px 44px;
   font-family: inherit;
   font-size: 13px;
   letter-spacing: 0.18em;
-  color: #f1c40f;
+  color: #60a5fa;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   animation: btn-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes btn-pulse {
-  0%, 100% { border-color: rgba(241,196,15,0.4); }
-  50%       { border-color: rgba(241,196,15,0.9); box-shadow: 0 0 12px rgba(241,196,15,0.15); }
+  0%, 100% { border-color: rgba(96,165,250,0.4); }
+  50%       { border-color: rgba(96,165,250,0.9); box-shadow: 0 0 14px rgba(96,165,250,0.18); }
 }
 
-.btn-start:hover  { background: rgba(241,196,15,0.08); }
+.btn-start:hover  { background: rgba(96,165,250,0.07); }
 .btn-start:active { opacity: 0.7; }
 
 .hint-row {
@@ -783,11 +923,11 @@ canvas {
   width: 290px;
   margin-top: 16px;
   font-size: 9px;
-  letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.08em;
+  color: rgba(148,163,184,0.2);
 }
 
-/* HUD OVERLAY */
+/* HUD */
 .hud-overlay {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -799,62 +939,65 @@ canvas {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px 6px;
-  background: linear-gradient(to bottom, rgba(6,6,15,0.85) 0%, rgba(6,6,15,0) 100%);
+  background: linear-gradient(to bottom, rgba(2,4,8,0.9) 0%, rgba(2,4,8,0) 100%);
 }
 
 .hud-cell { min-width: 60px; }
 .hud-cell.center { display: flex; gap: 4px; align-items: center; justify-content: center; }
 .hud-cell.right { text-align: right; }
-.hk { font-size: 8px; color: rgba(255,255,255,0.28); letter-spacing: 0.2em; }
+.hk { font-size: 8px; color: rgba(148,163,184,0.35); letter-spacing: 0.2em; }
 .hv { font-size: 20px; font-weight: 600; color: #fff; line-height: 1; }
 
 .stage-pip {
-  width: 8px;
-  height: 8px;
-  border: 0.5px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.05);
+  width: 8px; height: 8px;
+  border: 0.5px solid rgba(59,130,246,0.18);
+  background: rgba(59,130,246,0.05);
   transition: background 0.2s;
 }
-.stage-pip.lit { background: #f1c40f; border-color: rgba(241,196,15,0.6); }
+.stage-pip.lit { background: #3b82f6; border-color: rgba(59,130,246,0.7); }
 
-/* NOS PANEL */
-.nos-panel {
+/* AMMO PANEL */
+.ammo-panel {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 320px;
   padding: 7px 12px;
-  background: #09090f;
-  border: 1px solid rgba(255,255,255,0.07);
+  background: #070b11;
+  border: 1px solid rgba(59,130,246,0.1);
   border-top: none;
   transition: border-color 0.2s;
 }
 
-.nos-panel.ready  { border-color: rgba(241,196,15,0.35); }
-.nos-panel.active { border-color: rgba(241,196,15,0.7); background: rgba(241,196,15,0.06); }
+.ammo-panel.ready { border-color: rgba(96,165,250,0.4); }
 
-.nos-pips { display: flex; gap: 4px; }
+.ammo-pips { display: flex; gap: 4px; }
 
-.np {
-  width: 16px;
-  height: 8px;
-  background: rgba(255,255,255,0.06);
-  border: 0.5px solid rgba(255,255,255,0.1);
+.ap {
+  width: 16px; height: 8px;
+  background: rgba(59,130,246,0.06);
+  border: 0.5px solid rgba(59,130,246,0.12);
   transition: background 0.12s;
 }
 
-.np.f { background: rgba(241,196,15,0.5); border-color: rgba(241,196,15,0.7); }
-@keyframes np-r { 0%,100% { background: rgba(241,196,15,0.5); } 50% { background: rgba(241,196,15,1); } }
-.np.r { animation: np-r 0.8s infinite; border-color: #f1c40f; }
-@keyframes np-a { 0%,100% { background: rgba(241,196,15,0.8); } 50% { background: #fff; } }
-.np.a { animation: np-a 0.18s infinite; border-color: #f1c40f; }
+.ap.f { background: rgba(96,165,250,0.45); border-color: rgba(96,165,250,0.6); }
 
-.nos-info { display: flex; align-items: center; gap: 8px; flex: 1; }
-.nos-tag  { font-size: 9px; letter-spacing: 0.2em; color: rgba(241,196,15,0.6); }
-.nos-status { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.06em; }
-.nos-panel.ready  .nos-status { color: #f1c40f; }
-.nos-panel.active .nos-status { color: #f1c40f; font-weight: 600; }
-.nos-risk { font-size: 9px; color: rgba(231,76,60,0.8); letter-spacing: 0.05em; margin-left: auto; }
+@keyframes ap-r { 0%,100% { background: rgba(96,165,250,0.45); } 50% { background: rgba(96,165,250,0.95); } }
+.ap.r { animation: ap-r 1s infinite; }
+
+.ammo-info { display: flex; align-items: center; gap: 8px; flex: 1; }
+.ammo-tag  { font-size: 9px; letter-spacing: 0.2em; color: rgba(96,165,250,0.55); }
+.ammo-status { font-size: 10px; color: rgba(148,163,184,0.4); letter-spacing: 0.06em; }
+.ammo-panel.ready .ammo-status { color: #7dd3fc; }
+.ammo-bonus {
+  font-size: 11px; color: #fde68a; margin-left: auto;
+  animation: bonus-pop 0.3s ease-out;
+}
+
+@keyframes bonus-pop {
+  0% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 /* CONTROLS */
 .controls {
@@ -867,9 +1010,9 @@ canvas {
 .cb {
   flex: 1;
   height: 62px;
-  background: rgba(255,255,255,0.02);
-  border: 0.5px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.7);
+  background: rgba(59,130,246,0.03);
+  border: 0.5px solid rgba(59,130,246,0.12);
+  color: rgba(148,163,184,0.7);
   font-size: 18px;
   font-family: inherit;
   cursor: pointer;
@@ -881,48 +1024,34 @@ canvas {
   transition: background 0.1s;
 }
 
-.cb:active { background: rgba(255,255,255,0.08); }
+.cb:active { background: rgba(59,130,246,0.1); }
 
-/* NOS CONTROL BUTTON */
-.nos {
+.shoot {
   flex: 1.4;
   gap: 3px;
-  background: rgba(241,196,15,0.03);
-  border-color: rgba(241,196,15,0.15);
+  background: rgba(96,165,250,0.04);
+  border-color: rgba(96,165,250,0.15);
   cursor: not-allowed;
   opacity: 0.35;
 }
-.nos:disabled { cursor: not-allowed; }
+.shoot:disabled { cursor: not-allowed; }
 
-.nos-icon { font-size: 20px; }
-.nos-label { font-size: 10px; letter-spacing: 0.14em; color: rgba(241,196,15,0.8); }
+.shoot-icon { font-size: 18px; }
+.shoot-label { font-size: 9px; letter-spacing: 0.12em; color: rgba(96,165,250,0.7); }
 
-.nos.nos-r {
+.shoot.shoot-r {
   cursor: pointer;
   opacity: 1;
-  background: rgba(241,196,15,0.07);
-  border-color: rgba(241,196,15,0.6);
-  animation: nos-btn-pulse 0.9s ease-in-out infinite;
+  background: rgba(96,165,250,0.08);
+  border-color: rgba(96,165,250,0.55);
+  animation: shoot-pulse 0.85s ease-in-out infinite;
 }
 
-@keyframes nos-btn-pulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(241,196,15,0); }
-  50%      { box-shadow: 0 0 0 3px rgba(241,196,15,0.25); }
+@keyframes shoot-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(96,165,250,0.22); }
 }
 
-.nos.nos-a {
-  cursor: default;
-  opacity: 1;
-  background: rgba(241,196,15,0.14);
-  border-color: rgba(241,196,15,0.85);
-  animation: nos-active-flash 0.2s infinite;
-}
-
-@keyframes nos-active-flash {
-  0%,100% { background: rgba(241,196,15,0.1); }
-  50%      { background: rgba(241,196,15,0.22); }
-}
-
-.nos.nos-r .nos-label,
-.nos.nos-a .nos-label { color: #f1c40f; }
+.shoot.shoot-r .shoot-label { color: #7dd3fc; }
+.shoot.shoot-empty { opacity: 0.25; cursor: not-allowed; }
 </style>
