@@ -1,57 +1,55 @@
 <template>
   <div class="root">
-    <!-- GAME FRAME -->
     <div class="frame">
-      <canvas ref="gc"></canvas>
+      <canvas ref="gameCanvas" width="320" height="480"></canvas>
 
-      <!-- START -->
+      <!-- START SCREEN -->
       <div v-if="state === 'start'" class="screen">
         <div class="screen-inner">
-          <div class="badge">ARCADE RACER</div>
-          <h1 class="title-main">Halang<br><span class="title-accent">HINDAR</span></h1>
-          <p class="subtitle">Hindari rintangan · Kumpulkan NOS<br>Berani pakai NOS saat berbahaya = BONUS!</p>
-          <button class="btn-start" @click="beginGame">MULAI BALAPAN</button>
+          <div class="badge">Marble Shotter ARCADE</div>
+          <h1 class="title-main">Guli<br><span class="title-accent">Shutter</span></h1>
+          <p class="subtitle">Tembak marble · Cocokkan 3+<br>Jangan biarkan marble melewati batas!</p>
+          <button class="btn-start" @click="beginGame">
+            <span class="btn-icon">🍭</span> MULAI GAME
+          </button>
           <div class="hint-row">
-            <span>◀ GESER</span>
-            <span>NOS = RISIKO + REWARD</span>
-            <span>GESER ▶</span>
+            <span>TAP/KLIK untuk arahkan &amp; tembak</span>
           </div>
         </div>
       </div>
 
       <!-- GAME OVER -->
       <div v-if="state === 'over'" class="screen">
-        <div class="screen-inner">
-          <div class="badge danger">CRASH!</div>
+        <div class="screen-inner over-inner">
+          <div class="candy-deco">💔🍬💔</div>
+          <div class="badge danger">GAME OVER</div>
           <div class="over-score-label">SKOR AKHIR</div>
           <div class="over-score">{{ score }}</div>
-          <div class="hs-line" :class="{ gold: score >= highScore }">
-            <template v-if="score >= highScore">★ REKOR BARU ★</template>
+          <div class="hs-line" :class="{ gold: score >= highScore && score > 0 }">
+            <template v-if="score >= highScore && score > 0">⭐ REKOR BARU ⭐</template>
             <template v-else>REKOR: {{ highScore }}</template>
           </div>
           <div class="stat-row">
             <div class="stat">
               <div class="sv">{{ level }}</div>
-              <div class="sk">STAGE</div>
+              <div class="sk">LEVEL</div>
             </div>
             <div class="stat">
-              <div class="sv">{{ Math.floor(elapsed) }}s</div>
-              <div class="sk">WAKTU</div>
+              <div class="sv">{{ popCount }}</div>
+              <div class="sk">POP</div>
             </div>
             <div class="stat">
-              <div class="sv">{{ nosBonus }}</div>
-              <div class="sk">NOS BONUS</div>
-            </div>
-            <div class="stat">
-              <div class="sv">{{ dodgeCount }}</div>
-              <div class="sk">DODGE</div>
+              <div class="sv">{{ shotsFired }}</div>
+              <div class="sk">TEMBAKAN</div>
             </div>
           </div>
-          <button class="btn-start" @click="beginGame">COBA LAGI</button>
+          <button class="btn-start" @click="beginGame">
+            <span class="btn-icon">🔄</span> COBA LAGI
+          </button>
         </div>
       </div>
 
-      <!-- IN-GAME HUD overlay -->
+      <!-- HUD -->
       <div v-if="state === 'play'" class="hud-overlay">
         <div class="hud-top">
           <div class="hud-cell">
@@ -59,607 +57,739 @@
             <div class="hv">{{ score }}</div>
           </div>
           <div class="hud-cell center">
-            <div class="stage-pip" v-for="i in 6" :key="i" :class="{ lit: i <= level }"></div>
+            <div class="next-label">NEXT</div>
+            <div class="next-marble" :style="{ background: marbleColors[nextMarbleColor] }"></div>
           </div>
           <div class="hud-cell right">
-            <div class="hk">STAGE</div>
+            <div class="hk">LEVEL</div>
             <div class="hv">{{ level }}</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- NOS STATUS BAR -->
-    <div class="nos-panel" :class="{ active: nosActive, ready: nosStack >= NOS_MAX && !nosActive }">
-      <div class="nos-pips">
-        <div
-          v-for="i in NOS_MAX" :key="i"
-          class="np"
-          :class="{ f: i <= nosStack, a: nosActive, r: nosStack >= NOS_MAX && !nosActive }"
-        ></div>
-      </div>
-      <div class="nos-info">
-        <span class="nos-tag">NOS</span>
-        <span class="nos-status">
-          <template v-if="nosActive">⚡ AKTIF — BONUS x{{ nosMultiplier.toFixed(1) }}</template>
-          <template v-else-if="nosStack >= NOS_MAX">SIAP! TEKAN BOOST</template>
-          <template v-else>{{ nosStack }}/{{ NOS_MAX }} pip</template>
-        </span>
-        <span v-if="nosActive" class="nos-risk">⚠ BAHAYA GANDA</span>
+        <div class="danger-bar" :style="{ opacity: dangerOpacity, width: dangerOpacity * 100 + '%' }"></div>
       </div>
     </div>
 
     <!-- CONTROLS -->
-    <div class="controls">
-      <button class="cb left" @touchstart.prevent="moveLeft" @mousedown.prevent="moveLeft">
-        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M13 4L7 10l6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    <div v-if="state === 'play'" class="controls">
+      <button class="cb"
+        @touchstart.prevent="startRotate(-1)" @touchend.prevent="stopRotate"
+        @mousedown.prevent="startRotate(-1)" @mouseup.prevent="stopRotate" @mouseleave.prevent="stopRotate">
+        <svg width="22" height="22" viewBox="0 0 20 20"><path d="M13 4L7 10l6 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-
-      <button
-        class="cb nos"
-        :class="{ 'nos-r': nosStack >= NOS_MAX && !nosActive, 'nos-a': nosActive }"
-        :disabled="nosStack < NOS_MAX || nosActive"
-        @touchstart.prevent="activateNos"
-        @mousedown.prevent="activateNos"
-      >
-        <div class="nos-icon">⚡</div>
-        <div class="nos-label">{{ nosActive ? 'AKTIF' : nosStack >= NOS_MAX ? 'BOOST!' : 'NOS' }}</div>
+      <button class="cb fire-btn" @touchstart.prevent="fireMarble" @mousedown.prevent="fireMarble">
+        <div class="fire-icon">🍭</div>
+        <div class="fire-label">TEMBAK</div>
       </button>
-
-      <button class="cb right" @touchstart.prevent="moveRight" @mousedown.prevent="moveRight">
-        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <button class="cb"
+        @touchstart.prevent="startRotate(1)" @touchend.prevent="stopRotate"
+        @mousedown.prevent="startRotate(1)" @mouseup.prevent="stopRotate" @mouseleave.prevent="stopRotate">
+        <svg width="22" height="22" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-const gc = ref(null)
-let ctx = null
-let animId = null
-
-const state      = ref('start')
-const score      = ref(0)
-const highScore  = ref(0)
-const level      = ref(1)
-const elapsed    = ref(0)
-const dodgeCount = ref(0)
-const nosBonus   = ref(0)
-const nosMultiplier = ref(1.0)
-
-const NOS_MAX    = 5
-const nosStack   = ref(0)
-const nosActive  = ref(false)
-
+// ── Constants ──────────────────────────────────────────────
 const W = 320
-const H = 500
+const H = 480
+const R = 12          // marble radius (sedikit lebih kecil)
+const COLS = 10
+const ROWS = 14
 
-const LANES        = 3
-const LANE_W       = W / LANES
-const LANE_CENTERS = [LANE_W * 0.5, LANE_W * 1.5, LANE_W * 2.5]
-const GROUND       = H - 70
+// Hex grid: even rows offset right by half a cell
+const CELL_W = W / COLS  // 32px
+const CELL_H = R * 2.1   // ~25px agar bola tidak terlalu rapat
+const TOP_PAD = R + 30   // first row Y
+const ROW_H  = R * 1.72
 
-const LEVEL_THRESHOLDS = [0, 12, 28, 48, 72, 102]
-const LEVEL_SPEEDS     = [170, 230, 300, 380, 470, 570]
-const LEVEL_INTERVALS  = [1.65, 1.4, 1.15, 0.95, 0.78, 0.6]
+// Cannon sits near bottom of canvas
+const CANNON_Y = H - 50
 
-let obstacles    = []
-let particles    = []
-let floatTexts   = []
-let parallaxA    = [] // far — dots/stars
-let parallaxB    = [] // mid — trees/poles
-let parallaxC    = [] // near — road marks
+// Danger: game over when any marble reaches row >= DANGER_ROW
+const DANGER_ROW = 11
 
-let elapsedRaw   = 0
-let lastTime     = 0
-let spawnTimer   = 0
-let spawnInterval = 1.65
-let currentSpeed = 170
-let warningFlash = 0
-let playerLane   = 1
-let targetX      = LANE_CENTERS[1]
-let currentX     = LANE_CENTERS[1]
-let dodges       = 0
-let shakeAmt     = 0
-let nosTimer     = 0
-let nosSessionBonus = 0
-const NOS_DURATION    = 3.5
-const NOS_SPEED_MULT  = 2.5
-const NOS_SCORE_MULT  = 3.0
+// Drop new row every N seconds (scales with level)
+const DROP_INTERVAL_BASE = 20
 
-function initParallax() {
-  parallaxA = []
-  parallaxB = []
-  parallaxC = []
-  for (let i = 0; i < 20; i++) parallaxA.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() })
-  for (let i = 0; i < 8; i++) parallaxB.push({ x: Math.random() < 0.5 ? 5 + Math.random() * 18 : W - 5 - Math.random() * 18, y: Math.random() * H, h: 20 + Math.random() * 40 })
-  for (let i = 0; i < 6; i++) parallaxC.push({ y: (H / 6) * i })
+// Bullet speed (px/s)
+const SPEED = 400
+
+// Rotation step per frame when button held (radians) – smaller = finer control
+const ROTATE_STEP = 0.028
+
+const MIN_ANGLE = -Math.PI + 0.18
+const MAX_ANGLE = -0.18
+
+const marbleColors = [
+  '#FF6EB4', '#FF9F43', '#54A0FF', '#5F27CD',
+  '#00D2D3', '#1DD1A1', '#FF6B6B'
+]
+
+// ── Vue reactive state ────────────────────────────────────
+const gameCanvas    = ref(null)
+const state         = ref('start')
+const score         = ref(0)
+const highScore     = ref(0)
+const level         = ref(1)
+const popCount      = ref(0)
+const shotsFired    = ref(0)
+const nextMarbleColor = ref(0)
+
+// ── Game internals (non-reactive) ─────────────────────────
+let ctx         = null
+let grid        = []          // grid[row][col] = { color } | null
+let cannonAngle = -Math.PI / 2
+let currentColor = 0
+let bullet      = null
+let particles   = []
+let dropTimer   = 0
+let dropInterval = DROP_INTERVAL_BASE
+let pops        = 0
+let shots       = 0
+let maxRow      = 0           // furthest occupied row
+let rotateDir   = 0
+let animId      = null
+let lastTs      = 0
+let gameActive  = false
+
+// ── Computed ──────────────────────────────────────────────
+const dangerOpacity = computed(() => {
+  if (state.value !== 'play') return 0
+  const ratio = maxRow / DANGER_ROW
+  return Math.max(0, (ratio - 0.6) * 2.5)
+})
+
+// ── Hex helpers ───────────────────────────────────────────
+/**
+ * Returns pixel center of grid cell (col, row).
+ * Even rows (0,2,4…) are NOT offset; odd rows offset right by CELL_W/2.
+ * This is "odd-r" offset layout.
+ */
+function hexCenter(col, row) {
+  const x = col * CELL_W + CELL_W / 2
+  const y = row * CELL_H + TOP_PAD
+  return { x, y }
 }
 
-function moveLeft() {
-  if (state.value !== 'play') return
-  if (playerLane === 0) return
-  playerLane--
-  targetX = LANE_CENTERS[playerLane]
-  dodges++
-  dodgeCount.value = dodges
+/**
+ * Returns valid neighbors of (row, col) using odd-r offset rules.
+ * Reference: https://www.redblobgames.com/grids/hexagons/
+ */
+function hexNeighbors(row, col) {
+  // Untuk grid persegi, gunakan 4 arah (atas, bawah, kiri, kanan)
+  // Bisa juga tambahkan diagonal jika ingin match 8 arah
+  const dirs = [
+    [-1, 0], [1, 0], [0, -1], [0, 1]  // 4 arah
+  ]
+  const result = []
+  for (const [dr, dc] of dirs) {
+    const r = row + dr
+    const c = col + dc
+    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+      result.push({ row: r, col: c })
+    }
+  }
+  return result
 }
 
-function moveRight() {
-  if (state.value !== 'play') return
-  if (playerLane === 2) return
-  playerLane++
-  targetX = LANE_CENTERS[playerLane]
-  dodges++
-  dodgeCount.value = dodges
+// ── Grid helpers ──────────────────────────────────────────
+function makeGrid() {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null))
 }
 
-function activateNos() {
+function colorCount() {
+  return Math.min(3 + Math.floor(level.value / 2), marbleColors.length)
+}
+
+function randColor() {
+  return Math.floor(Math.random() * colorCount())
+}
+
+function initGrid() {
+  grid = makeGrid()
+  const filled = 5
+  for (let row = 0; row < filled; row++) {
+    for (let col = 0; col < COLS; col++) {
+      // Semua row bisa diisi semua kolom (tidak ada skip)
+      if (Math.random() < 0.85) {
+        grid[row][col] = { color: randColor() }
+      }
+    }
+  }
+  recalcMaxRow()
+}
+
+
+function recalcMaxRow() {
+  maxRow = 0
+  for (let r = ROWS - 1; r >= 0; r--) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) { 
+        maxRow = r
+        return 
+      }
+    }
+  }
+}
+
+// ── Match / pop logic ─────────────────────────────────────
+function floodFill(row, col, color, visited) {
+  const key = row * COLS + col
+  if (visited[key]) return []
+  if (!grid[row]?.[col] || grid[row][col].color !== color) return []
+  visited[key] = true
+  const group = [{ row, col }]
+  for (const n of hexNeighbors(row, col)) {
+    group.push(...floodFill(n.row, n.col, color, visited))
+  }
+  return group
+}
+
+// ── Update fungsi findFloating untuk grid persegi ──
+function findFloating() {
+  const attached = new Uint8Array(ROWS * COLS)
+  const queue = []
+
+  // Mulai dari semua marble di row 0
+  for (let c = 0; c < COLS; c++) {
+    if (grid[0][c]) {
+      const key = c
+      if (!attached[key]) {
+        attached[key] = 1
+        queue.push({ row: 0, col: c })
+      }
+    }
+  }
+
+  // BFS untuk menemukan semua marble yang terhubung ke atas
+  let head = 0
+  while (head < queue.length) {
+    const { row, col } = queue[head++]
+    for (const n of hexNeighbors(row, col)) {
+      const key = n.row * COLS + n.col
+      if (grid[n.row][n.col] && !attached[key]) {
+        attached[key] = 1
+        queue.push(n)
+      }
+    }
+  }
+
+  // Marble yang tidak terhubung ke row 0 adalah floating
+  const floating = []
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] && !attached[r * COLS + c]) {
+        floating.push({ row: r, col: c })
+      }
+    }
+  }
+  return floating
+}
+
+function emitParticles(x, y, color, count = 12) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const spd = 60 + Math.random() * 160
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      r: 2 + Math.random() * 4,
+      color,
+      life: 0.7 + Math.random() * 0.5
+    })
+  }
+}
+
+function tryMatch(row, col) {
+  if (!grid[row]?.[col]) return;
+  
+  const visited = new Uint8Array(ROWS * COLS)
+  const group = floodFill(row, col, grid[row][col].color, visited)
+
+  if (group.length >= 3) {
+    for (const { row: r, col: c } of group) {
+      const cell = grid[r]?.[c]
+      if (cell) {
+        const { x, y } = hexCenter(c, r)
+        emitParticles(x, y, marbleColors[cell.color], 10)
+        grid[r][c] = null
+      }
+    }
+    pops += group.length
+    popCount.value = pops
+    score.value += group.length * 10 * level.value
+
+    // Remove floating marbles after clearing group
+    const floating = findFloating()
+    for (const { row: r, col: c } of floating) {
+      const cell = grid[r]?.[c]
+      if (cell) {
+        const { x, y } = hexCenter(c, r)
+        emitParticles(x, y, marbleColors[cell.color], 6)
+        score.value += 5 * level.value
+        grid[r][c] = null
+        pops++
+      }
+    }
+    popCount.value = pops
+
+    // Level up
+    if (score.value >= level.value * 300) {
+      level.value++
+      dropInterval = Math.max(8, DROP_INTERVAL_BASE - level.value * 1.2)
+    }
+  }
+
+  recalcMaxRow()
+  
+  // Cek game over setelah match
+  if (maxRow >= DANGER_ROW) {
+    endGame()
+  }
+}
+
+// ── Drop a new row from top ───────────────────────────────
+function dropRow() {
+  // Geser semua row ke bawah
+  for (let r = ROWS - 1; r > 0; r--) {
+    grid[r] = []
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r-1][c]) {
+        grid[r][c] = { color: grid[r-1][c].color }
+      } else {
+        grid[r][c] = null
+      }
+    }
+  }
+  
+  // Buat row baru di atas (row 0)
+  grid[0] = Array(COLS).fill(null)
+  for (let c = 0; c < COLS; c++) {
+    if (Math.random() < 0.75) {
+      grid[0][c] = { color: randColor() }
+    }
+  }
+  
+  recalcMaxRow()
+  
+  // Cek game over setelah drop row
+  if (maxRow >= DANGER_ROW) {
+    endGame()
+  }
+}
+
+// ── Place bullet into grid ────────────────────────────────
+function placeMarble(bx, by, color) {
+  let bestRow = -1, bestCol = -1, minDist = Infinity
+
+  // Cari cell kosong terdekat
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) continue
+      
+      const { x, y } = hexCenter(c, r)
+      const d = Math.hypot(bx - x, by - y)
+      
+      if (d < minDist && d < R * 2.2) {
+        // Cek apakah cell ini adjacent ke marble lain atau row 0
+        const hasNeighbor = r === 0 || hexNeighbors(r, c).some(n => {
+          return grid[n.row]?.[n.col]
+        })
+        if (hasNeighbor) {
+          minDist = d
+          bestRow = r
+          bestCol = c
+        }
+      }
+    }
+  }
+
+  // Fallback: cari cell kosong terdekat tanpa syarat neighbor
+  if (bestRow === -1) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c]) continue
+        const { x, y } = hexCenter(c, r)
+        const d = Math.hypot(bx - x, by - y)
+        if (d < minDist && d < R * 2.5) {
+          minDist = d
+          bestRow = r
+          bestCol = c
+        }
+      }
+    }
+  }
+
+  if (bestRow === -1) {
+    // Tidak ada tempat untuk menempatkan marble, game over
+    endGame()
+    return
+  }
+
+  grid[bestRow][bestCol] = { color }
+  tryMatch(bestRow, bestCol)
+  
+  // Cek lagi game over setelah match
+  if (maxRow >= DANGER_ROW) {
+    endGame()
+  }
+}
+
+// ── Drawing ───────────────────────────────────────────────
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H)
+  grad.addColorStop(0, '#12082a')
+  grad.addColorStop(1, '#270d4e')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, W, H)
+
+  // Subtle grid dots
+  ctx.fillStyle = 'rgba(255,255,255,0.04)'
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const { x, y } = hexCenter(c, r)
+      ctx.beginPath()
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  // Danger line - perbaiki posisi Y
+  const dangerY = DANGER_ROW * CELL_H + TOP_PAD - R
+  ctx.save()
+  ctx.strokeStyle = 'rgba(255,71,87,0.85)'
+  ctx.lineWidth = 3
+  ctx.setLineDash([8, 6])
+  ctx.beginPath()
+  ctx.moveTo(0, dangerY)
+  ctx.lineTo(W, dangerY)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.restore()
+}
+
+function drawMarble(x, y, colorIdx, radius) {
+  radius = radius || R
+  const color = marbleColors[colorIdx]
+
+  // Shadow
+  ctx.save()
+  ctx.shadowColor = color
+  ctx.shadowBlur = 8
+
+  // Gradient sphere
+  const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius)
+  g.addColorStop(0, shiftLightness(color, 40))
+  g.addColorStop(0.55, color)
+  g.addColorStop(1, shiftLightness(color, -30))
+
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  // Rim
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Specular
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'
+  ctx.beginPath()
+  ctx.arc(x - radius * 0.28, y - radius * 0.28, radius * 0.22, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+// Quick HSL lightness shift (approximate, works on hex colors)
+function shiftLightness(hex, amount) {
+  let r = parseInt(hex.slice(1, 3), 16)
+  let g = parseInt(hex.slice(3, 5), 16)
+  let b = parseInt(hex.slice(5, 7), 16)
+  r = Math.max(0, Math.min(255, r + amount * 2))
+  g = Math.max(0, Math.min(255, g + amount * 2))
+  b = Math.max(0, Math.min(255, b + amount * 2))
+  return `rgb(${r},${g},${b})`
+}
+
+function drawCannon() {
+  const cx = W / 2
+  const cy = CANNON_Y
+
+  // Platform base
+  const baseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 22)
+  baseGrad.addColorStop(0, '#FF9DE2')
+  baseGrad.addColorStop(1, '#FF3D9A')
+  ctx.fillStyle = baseGrad
+  ctx.beginPath()
+  ctx.ellipse(cx, cy + 4, 22, 12, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Barrel
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(cannonAngle)
+
+  // Barrel body
+  ctx.fillStyle = '#FF9F43'
+  ctx.beginPath()
+  ctx.roundRect(-6, -32, 12, 32, 4)
+  ctx.fill()
+
+  // Barrel tip
+  ctx.fillStyle = '#FF6EB4'
+  ctx.beginPath()
+  ctx.roundRect(-5, -34, 10, 8, 3)
+  ctx.fill()
+
+  ctx.restore()
+
+  // Aim guide (dotted)
+  const steps = 8
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps
+    const gx = cx + Math.cos(cannonAngle) * (30 + t * 120)
+    const gy = cy + Math.sin(cannonAngle) * (30 + t * 120)
+    ctx.fillStyle = `rgba(255,255,255,${0.18 * (1 - t)})`
+    ctx.beginPath()
+    ctx.arc(gx, gy, 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Current marble in cannon
+  drawMarble(cx, cy - 4, currentColor, R - 1)
+}
+
+function drawParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+    p.vy += 220 * dt
+    p.life -= dt * 1.8
+
+    if (p.life <= 0) { particles.splice(i, 1); continue }
+
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, p.life)
+    ctx.fillStyle = p.color
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+function render() {
+  if (!ctx) return
+  drawBackground()
+
+  // Grid marbles - FIXED: Add null check
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r]?.[c]
+      if (cell && cell.color !== undefined) {
+        const { x, y } = hexCenter(c, r)
+        drawMarble(x, y, cell.color)
+      }
+    }
+  }
+
+  // Bullet in flight
+  if (bullet && bullet.color !== undefined) {
+    drawMarble(bullet.x, bullet.y, bullet.color)
+  }
+
+  drawCannon()
+  drawParticles(1 / 60)
+}
+
+// ── Game loop ─────────────────────────────────────────────
+// In update function - collision detection
+function update(dt) {
+  if (!gameActive) return
+
+  // Smooth cannon rotation
+  if (rotateDir !== 0) {
+    cannonAngle += rotateDir * ROTATE_STEP
+    cannonAngle = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, cannonAngle))
+  }
+
+  // Drop timer
+  dropTimer += dt
+  if (dropTimer >= dropInterval) {
+    dropTimer = 0
+    dropRow()
+  }
+
+  // Bullet physics
+  if (bullet) {
+    bullet.x += bullet.vx * dt
+    bullet.y += bullet.vy * dt
+
+    // Wall bounces
+    if (bullet.x - R < 0)  { bullet.x = R;     bullet.vx =  Math.abs(bullet.vx) }
+    if (bullet.x + R > W)  { bullet.x = W - R; bullet.vx = -Math.abs(bullet.vx) }
+
+    // Hit ceiling → place
+    if (bullet.y - R <= TOP_PAD - R) {
+      placeMarble(bullet.x, bullet.y, bullet.color)
+      bullet = null
+      return
+    }
+
+    // Collision with grid marbles - FIXED: Add null checks
+    for (let r = 0; r <= Math.min(maxRow + 2, ROWS - 1); r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = grid[r]?.[c]
+        if (!cell) continue
+        const { x, y } = hexCenter(c, r)
+        if (Math.hypot(bullet.x - x, bullet.y - y) < R * 1.85) {
+          placeMarble(bullet.x, bullet.y, bullet.color)
+          bullet = null
+          return
+        }
+      }
+    }
+
+    // Out of bounds bottom (shouldn't normally happen)
+    if (bullet.y + R > H) {
+      bullet = null
+    }
+  }
+}
+
+function gameLoop(ts) {
+  const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.033) : 0
+  lastTs = ts
+
+  update(dt)
+  render()
+  animId = requestAnimationFrame(gameLoop)
+}
+
+// ── Input ─────────────────────────────────────────────────
+function onCanvasClick(e) {
   if (state.value !== 'play') return
-  if (nosStack.value < NOS_MAX || nosActive.value) return
-  nosActive.value = true
-  nosStack.value  = 0
-  nosTimer        = NOS_DURATION
-  nosMultiplier.value = 1.0
-  nosSessionBonus = 0
+
+  const rect = gameCanvas.value.getBoundingClientRect()
+  const sx = W / rect.width
+  const sy = H / rect.height
+
+  const cx = (e.clientX ?? e.touches?.[0]?.clientX)
+  const cy = (e.clientY ?? e.touches?.[0]?.clientY)
+  if (cx == null) return
+
+  const mx = (cx - rect.left) * sx
+  const my = (cy - rect.top)  * sy
+
+  const dx = mx - W / 2
+  const dy = my - CANNON_Y
+  cannonAngle = Math.atan2(dy, dx)
+  cannonAngle = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, cannonAngle))
+
+  fireMarble()
 }
 
 function onKeyDown(e) {
-  if (e.key === 'ArrowLeft')  { e.preventDefault(); moveLeft() }
-  if (e.key === 'ArrowRight') { e.preventDefault(); moveRight() }
-  if (e.key === ' ' || e.key === 'n' || e.key === 'N') { e.preventDefault(); activateNos() }
+  if (state.value !== 'play') return
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); cannonAngle = Math.max(MIN_ANGLE, cannonAngle - ROTATE_STEP * 2) }
+  if (e.key === 'ArrowRight') { e.preventDefault(); cannonAngle = Math.min(MAX_ANGLE, cannonAngle + ROTATE_STEP * 2) }
+  if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); fireMarble() }
 }
 
-function beginGame() {
-  state.value      = 'play'
-  score.value      = 0
-  level.value      = 1
-  elapsed.value    = 0
-  dodgeCount.value = 0
-  nosBonus.value   = 0
-  nosStack.value   = 0
-  nosActive.value  = false
+function startRotate(dir) { rotateDir = dir }
+function stopRotate()      { rotateDir = 0 }
 
-  obstacles    = []
-  particles    = []
-  floatTexts   = []
-  elapsedRaw   = 0
-  lastTime     = 0
-  spawnTimer   = 0
-  spawnInterval = 1.65
-  currentSpeed = 170
-  warningFlash = 0
-  playerLane   = 1
-  targetX      = LANE_CENTERS[1]
-  currentX     = LANE_CENTERS[1]
-  dodges       = 0
-  shakeAmt     = 0
-  nosTimer     = 0
-  nosSessionBonus = 0
-  nosMultiplier.value = 1.0
-  initParallax()
-  if (!animId) animId = requestAnimationFrame(loop)
+function fireMarble() {
+  if (!gameActive || bullet) return
+
+  bullet = {
+    x: W / 2,
+    y: CANNON_Y - 4,
+    vx: Math.cos(cannonAngle) * SPEED,
+    vy: Math.sin(cannonAngle) * SPEED,
+    color: currentColor
+  }
+
+  currentColor = nextMarbleColor.value
+  pickNext()
+  shots++
+  shotsFired.value = shots
+}
+
+function pickNext() {
+  nextMarbleColor.value = randColor()
+}
+
+// ── Game lifecycle ────────────────────────────────────────
+function beginGame() {
+  state.value     = 'play'
+  score.value     = 0
+  level.value     = 1
+  popCount.value  = 0
+  shotsFired.value = 0
+  pops    = 0
+  shots   = 0
+  bullet  = null
+  particles = []
+  cannonAngle  = -Math.PI / 2
+  dropTimer    = 0
+  dropInterval = DROP_INTERVAL_BASE
+  rotateDir    = 0
+  lastTs       = 0
+  gameActive   = true
+
+  initGrid()
+  currentColor = randColor()
+  pickNext()
 }
 
 function endGame() {
-  state.value      = 'over'
-  elapsed.value    = elapsedRaw
-  if (nosActive.value) {
-    nosBonus.value += nosSessionBonus
-  }
+  gameActive = false
+  state.value = 'over'
   if (score.value > highScore.value) highScore.value = score.value
-  shakeAmt    = 1.0
-  nosActive.value = false
+  bullet = null
 }
 
-function getLevel(secs) {
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (secs >= LEVEL_THRESHOLDS[i]) return i + 1
-  }
-  return 1
-}
-
-function getLevelProgress(secs) {
-  const lv  = getLevel(secs)
-  const idx = lv - 1
-  const start = LEVEL_THRESHOLDS[idx] ?? 0
-  const next  = LEVEL_THRESHOLDS[idx + 1] ?? (start + 60)
-  return Math.min((secs - start) / (next - start), 1)
-}
-
-const OBS_TYPES = [
-  { type: 'barrel',  w: 22, h: 22, col: '#c0392b', col2: '#e74c3c' },
-  { type: 'cone',    w: 18, h: 26, col: '#e67e22', col2: '#f39c12' },
-  { type: 'truck',   w: 34, h: 20, col: '#2c3e50', col2: '#34495e' },
-  { type: 'oil',     w: 38, h: 12, col: '#1a1a2e', col2: '#16213e' },
-  { type: 'barrier', w: 44, h: 10, col: '#c0392b', col2: '#e74c3c' },
-]
-
-function spawnObs() {
-  const used = new Set()
-  let count = 1
-  if (level.value >= 4 && Math.random() < 0.3) count = 2
-  if (nosActive.value) count = Math.min(count + (Math.random() < 0.6 ? 1 : 0), LANES)
-
-  for (let c = 0; c < count; c++) {
-    let lane, tries = 0
-    do { lane = Math.floor(Math.random() * LANES); tries++ } while (used.has(lane) && tries < 8)
-    used.add(lane)
-    const t   = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)]
-    const spd = nosActive.value ? currentSpeed / NOS_SPEED_MULT : currentSpeed
-    obstacles.push({ lane, x: LANE_CENTERS[lane], y: -50, w: t.w, h: t.h, col: t.col, col2: t.col2, type: t.type, speed: spd, dodged: false })
-  }
-}
-
-function emitParticles(x, y, col, n = 14) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2
-    const s = 50 + Math.random() * 130
-    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 2 + Math.random() * 4, col, life: 1 })
-  }
-}
-
-function spawnFloatText(x, y, text, col) {
-  floatTexts.push({ x, y, vy: -60, text, col, life: 1 })
-}
-
-function update(dt) {
-  elapsedRaw += dt
-  spawnTimer += dt
-
-  if (nosActive.value) {
-    nosTimer -= dt
-    nosMultiplier.value = Math.min(nosMultiplier.value + dt * 1.2, NOS_SCORE_MULT)
-    if (nosTimer <= 0) {
-      nosActive.value = false
-      nosTimer = 0
-      nosBonus.value += nosSessionBonus
-      nosSessionBonus = 0
-    }
-  }
-
-  const effectiveSpeed = nosActive.value ? currentSpeed * NOS_SPEED_MULT : currentSpeed
-
-  const newLevel = getLevel(elapsedRaw)
-  if (newLevel !== level.value) {
-    level.value   = newLevel
-    warningFlash  = 1.5
-    currentSpeed  = LEVEL_SPEEDS[Math.min(newLevel - 1, LEVEL_SPEEDS.length - 1)]
-    spawnInterval = LEVEL_INTERVALS[Math.min(newLevel - 1, LEVEL_INTERVALS.length - 1)]
-  }
-  if (warningFlash > 0) warningFlash = Math.max(0, warningFlash - dt)
-  if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnObs() }
-
-  currentX += (targetX - currentX) * Math.min(1, 16 * dt)
-  if (Math.abs(currentX - targetX) < 0.5) currentX = targetX
-
-  // Parallax update
-  const spA = effectiveSpeed * 0.08
-  const spB = effectiveSpeed * 0.22
-  const spC = effectiveSpeed * 0.5
-  for (const p of parallaxA) { p.y += spA * dt; if (p.y > H) p.y -= H }
-  for (const p of parallaxB) { p.y += spB * dt; if (p.y > H + 50) p.y -= H + 80 }
-  for (const p of parallaxC) { p.y += spC * dt; if (p.y > H) p.y -= H }
-
-  const base = Math.floor(elapsedRaw * 8)
-  score.value = base + (nosActive.value ? Math.floor(nosSessionBonus) : 0) + nosBonus.value
-
-  if (shakeAmt > 0) shakeAmt = Math.max(0, shakeAmt - dt * 4)
-
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i]
-    o.y += o.speed * dt
-    if (nosActive.value) o.y += (effectiveSpeed - o.speed) * dt
-
-    if (o.y > H + 60) {
-      if (!o.dodged) {
-        if (nosStack.value < NOS_MAX && !nosActive.value) nosStack.value++
-        if (nosActive.value) {
-          const bonus = Math.floor(50 * nosMultiplier.value)
-          nosSessionBonus += bonus
-          spawnFloatText(o.x, GROUND - 40, '+' + bonus, '#f1c40f')
-        }
-      }
-      obstacles.splice(i, 1)
-      continue
-    }
-
-    const px = currentX, py = GROUND - 10
-    const pw = 14, ph = 22
-    const ow = o.w * 0.65, oh = o.h * 0.65
-
-    if (
-      px - pw < o.x + ow / 2 && px + pw > o.x - ow / 2 &&
-      py - ph < o.y + oh / 2 && py + ph > o.y - oh / 2
-    ) {
-      emitParticles(px, py, '#e74c3c', 18)
-      endGame()
-      return
-    }
-  }
-
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i]
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 220 * dt; p.life -= dt * 1.8
-    if (p.life <= 0) particles.splice(i, 1)
-  }
-
-  for (let i = floatTexts.length - 1; i >= 0; i--) {
-    const f = floatTexts[i]
-    f.y += f.vy * dt; f.life -= dt * 1.5
-    if (f.life <= 0) floatTexts.splice(i, 1)
-  }
-}
-
-function drawObstacle(o) {
-  const x = o.x, y = o.y
-  ctx.save()
-  if (nosActive.value) { ctx.shadowColor = 'rgba(241,196,15,0.5)'; ctx.shadowBlur = 6 }
-
-  if (o.type === 'barrel') {
-    ctx.fillStyle = o.col
-    ctx.beginPath(); ctx.ellipse(x, y, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = o.col2; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.ellipse(x, y - o.h * 0.15, o.w * 0.45, o.h * 0.18, 0, 0, Math.PI * 2); ctx.stroke()
-
-  } else if (o.type === 'cone') {
-    ctx.fillStyle = o.col
-    ctx.beginPath()
-    ctx.moveTo(x, y - o.h / 2)
-    ctx.lineTo(x - o.w / 2, y + o.h / 2)
-    ctx.lineTo(x + o.w / 2, y + o.h / 2)
-    ctx.closePath(); ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(x - o.w / 2, y + o.h / 6, o.w, 3)
-
-  } else if (o.type === 'truck') {
-    ctx.fillStyle = o.col2
-    ctx.fillRect(x - o.w / 2, y - o.h / 2, o.w * 0.65, o.h)
-    ctx.fillStyle = o.col
-    ctx.fillRect(x - o.w / 2 + o.w * 0.65, y - o.h / 2, o.w * 0.35, o.h)
-    ctx.fillStyle = 'rgba(100,200,255,0.5)'
-    ctx.fillRect(x - o.w / 2 + o.w * 0.67, y - o.h / 2 + 2, o.w * 0.28, o.h * 0.45)
-    ctx.fillStyle = '#e74c3c'
-    ctx.fillRect(x - o.w / 2, y - o.h / 2, 4, 4)
-    ctx.fillRect(x - o.w / 2, y + o.h / 2 - 4, 4, 4)
-
-  } else if (o.type === 'oil') {
-    ctx.fillStyle = o.col
-    ctx.beginPath(); ctx.ellipse(x, y, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(80,80,200,0.3)'
-    ctx.beginPath(); ctx.ellipse(x - 4, y - 2, o.w * 0.22, o.h * 0.3, -0.4, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(200,80,200,0.3)'
-    ctx.beginPath(); ctx.ellipse(x + 4, y + 2, o.w * 0.18, o.h * 0.28, 0.5, 0, Math.PI * 2); ctx.fill()
-
-  } else if (o.type === 'barrier') {
-    const bw = o.w, bh = o.h
-    ctx.fillStyle = o.col
-    ctx.fillRect(x - bw / 2, y - bh / 2, bw, bh)
-    ctx.fillStyle = '#fff'
-    for (let s = 0; s < 4; s++) ctx.fillRect(x - bw / 2 + s * (bw / 4), y - bh / 2, bw / 8, bh)
-  }
-
-  ctx.shadowBlur = 0
-  ctx.restore()
-}
-
-function drawBike(x, y) {
-  ctx.save()
-  const nos = nosActive.value
-  // exhaust flames
-  if (nos) {
-    const fl = 4 + 5 * Math.random()
-    const grad = ctx.createLinearGradient(x, y + 10, x, y + 10 + fl)
-    grad.addColorStop(0, '#f1c40f')
-    grad.addColorStop(1, 'rgba(241,196,15,0)')
-    ctx.fillStyle = grad
-    ctx.fillRect(x - 5, y + 10, 10, fl)
-  }
-
-  // rear wheel
-  ctx.fillStyle = nos ? '#f1c40f' : '#2c3e50'
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 7, 4, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = '#95a5a6'; ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.ellipse(x, y + 10, 7, 4, 0, 0, Math.PI * 2); ctx.stroke()
-
-  // front wheel
-  ctx.fillStyle = nos ? '#f1c40f' : '#2c3e50'
-  ctx.beginPath(); ctx.ellipse(x, y - 14, 5, 3, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = '#95a5a6'; ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.ellipse(x, y - 14, 5, 3, 0, 0, Math.PI * 2); ctx.stroke()
-
-  // frame / body
-  ctx.fillStyle = nos ? '#f39c12' : '#e74c3c'
-  ctx.beginPath()
-  ctx.moveTo(x - 4, y + 8)
-  ctx.lineTo(x - 6, y - 4)
-  ctx.lineTo(x - 2, y - 12)
-  ctx.lineTo(x + 2, y - 12)
-  ctx.lineTo(x + 6, y - 4)
-  ctx.lineTo(x + 4, y + 8)
-  ctx.closePath(); ctx.fill()
-
-  // seat/tank
-  ctx.fillStyle = nos ? '#e67e22' : '#c0392b'
-  ctx.fillRect(x - 5, y - 6, 10, 6)
-
-  // rider body
-  ctx.fillStyle = nos ? '#f1c40f' : '#ecf0f1'
-  ctx.fillRect(x - 4, y - 18, 8, 10)
-
-  // helmet
-  ctx.fillStyle = nos ? '#e67e22' : '#2c3e50'
-  ctx.beginPath(); ctx.arc(x, y - 21, 5, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = 'rgba(100,200,255,0.6)'
-  ctx.fillRect(x - 3, y - 24, 6, 3)
-
-  // handlebar
-  ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(x - 8, y - 10); ctx.lineTo(x + 8, y - 10); ctx.stroke()
-
-  ctx.restore()
-}
-
-function draw() {
-  ctx.save()
-  if (shakeAmt > 0) {
-    ctx.translate((Math.random() - 0.5) * shakeAmt * 8, (Math.random() - 0.5) * shakeAmt * 8)
-  }
-
-  // Sky gradient
-  const sky = ctx.createLinearGradient(0, 0, 0, H)
-  if (nosActive.value) {
-    sky.addColorStop(0, '#0a0510')
-    sky.addColorStop(1, '#1a0820')
-  } else {
-    sky.addColorStop(0, '#06060f')
-    sky.addColorStop(1, '#0d0d1a')
-  }
-  ctx.fillStyle = sky
-  ctx.fillRect(0, 0, W, H)
-
-  // Parallax A — stars/dots (far)
-  ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.5)' : 'rgba(255,255,255,0.35)'
-  for (const p of parallaxA) {
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
-  }
-
-  // Road surface
-  ctx.fillStyle = '#0f1014'
-  ctx.fillRect(LANE_W * 0.05, 0, W - LANE_W * 0.1, H)
-
-  // Parallax B — roadside trees / poles (mid)
-  for (const p of parallaxB) {
-    const isLeft = p.x < W / 2
-    if (nosActive.value) {
-      ctx.fillStyle = 'rgba(241,196,15,0.15)'
-    } else {
-      ctx.fillStyle = 'rgba(46,139,87,0.35)'
-    }
-    // trunk
-    ctx.fillRect(p.x - 2, p.y - p.h, 4, p.h)
-    // foliage
-    ctx.beginPath()
-    ctx.arc(p.x, p.y - p.h, 8 + p.h * 0.2, 0, Math.PI * 2)
-    ctx.fill()
-    // glow light on pole
-    ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.4)' : 'rgba(255,200,100,0.25)'
-    ctx.beginPath(); ctx.arc(isLeft ? p.x + 6 : p.x - 6, p.y - p.h + 4, 3, 0, Math.PI * 2); ctx.fill()
-  }
-
-  // Road edge lines
-  ctx.strokeStyle = nosActive.value ? 'rgba(241,196,15,0.4)' : 'rgba(255,255,255,0.18)'
-  ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(LANE_W * 0.05, 0); ctx.lineTo(LANE_W * 0.05, H); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(W - LANE_W * 0.05, 0); ctx.lineTo(W - LANE_W * 0.05, H); ctx.stroke()
-
-  // Parallax C — dashed lane marks (near)
-  ctx.strokeStyle = nosActive.value ? 'rgba(241,196,15,0.25)' : 'rgba(255,255,255,0.12)'
-  ctx.lineWidth   = 1.5
-  ctx.setLineDash([16, 16])
-  for (const p of parallaxC) {
-    for (let li = 1; li < LANES; li++) {
-      const x = LANE_W * li
-      ctx.beginPath(); ctx.moveTo(x, p.y - 10); ctx.lineTo(x, p.y + 10); ctx.stroke()
-    }
-  }
-  ctx.setLineDash([])
-
-  // NOS speed lines
-  if (nosActive.value) {
-    const t = Date.now() / 1000
-    for (let i = 0; i < 6; i++) {
-      const sx = LANE_W * 0.15 + (i / 6) * (W - LANE_W * 0.3)
-      const alpha = 0.05 + 0.05 * Math.sin(t * 8 + i)
-      ctx.strokeStyle = `rgba(241,196,15,${alpha})`
-      ctx.lineWidth = 1
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx + 8, H); ctx.stroke()
-    }
-    // NOS timer bar top
-    const frac = nosTimer / NOS_DURATION
-    ctx.fillStyle = 'rgba(241,196,15,0.18)'
-    ctx.fillRect(0, 0, W * frac, 5)
-    ctx.fillStyle = 'rgba(241,196,15,0.8)'
-    ctx.fillRect(0, 0, W * frac, 2)
-  }
-
-  // Level progress bar — bottom
-  const pct = getLevelProgress(elapsedRaw)
-  ctx.fillStyle = 'rgba(255,255,255,0.05)'
-  ctx.fillRect(0, H - 3, W, 3)
-  ctx.fillStyle = nosActive.value ? 'rgba(241,196,15,0.7)' : 'rgba(255,255,255,0.35)'
-  ctx.fillRect(0, H - 3, W * pct, 3)
-
-  // Level flash
-  if (warningFlash > 0) {
-    const pulse = Math.abs(Math.sin(warningFlash * 9))
-    ctx.fillStyle = `rgba(255,255,255,${pulse * (warningFlash / 1.5) * 0.1})`
-    ctx.fillRect(0, 0, W, H)
-    ctx.fillStyle = `rgba(255,255,255,${Math.min(pulse * (warningFlash / 1.5), 0.9)})`
-    ctx.font = 'bold 13px monospace'
-    ctx.textAlign = 'center'
-    ctx.fillText('STAGE ' + level.value, W / 2, 24)
-    ctx.textAlign = 'left'
-  }
-
-  // Obstacles
-  for (const o of obstacles) drawObstacle(o)
-
-  // Particles
-  for (const p of particles) {
-    ctx.save()
-    ctx.globalAlpha = Math.max(0, p.life)
-    ctx.fillStyle   = p.col
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-  }
-
-  // Float texts (NOS bonus)
-  for (const f of floatTexts) {
-    ctx.save()
-    ctx.globalAlpha = Math.max(0, f.life)
-    ctx.fillStyle   = f.col
-    ctx.font        = 'bold 14px monospace'
-    ctx.textAlign   = 'center'
-    ctx.fillText(f.text, f.x, f.y)
-    ctx.restore()
-  }
-
-  // Player bike
-  if (state.value === 'play' || state.value === 'over') {
-    drawBike(currentX, GROUND - 10)
-  }
-
-  ctx.restore()
-}
-
-function loop(ts) {
-  animId = requestAnimationFrame(loop)
-  const dt = lastTime ? Math.min((ts - lastTime) / 1000, 0.05) : 0
-  lastTime = ts
-  if (state.value === 'play') update(dt)
-  draw()
-}
-
+// ── Lifecycle hooks ───────────────────────────────────────
 onMounted(() => {
-  ctx = gc.value.getContext('2d')
-  gc.value.width  = W
-  gc.value.height = H
+  ctx = gameCanvas.value.getContext('2d')
+
+  // initial idle render (background)
+  render()
+
+  gameCanvas.value.addEventListener('click', onCanvasClick)
+  gameCanvas.value.addEventListener('touchstart', e => {
+    e.preventDefault()
+    onCanvasClick(e)
+  }, { passive: false })
+
   document.addEventListener('keydown', onKeyDown)
-  initParallax()
-  animId = requestAnimationFrame(loop)
+  animId = requestAnimationFrame(gameLoop)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', onKeyDown)
   if (animId) cancelAnimationFrame(animId)
+  document.removeEventListener('keydown', onKeyDown)
 })
 </script>
 
 <style scoped>
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
 
 .root {
   display: flex;
@@ -667,28 +797,27 @@ onUnmounted(() => {
   align-items: center;
   width: 100%;
   min-height: 100svh;
-  background: #06060f;
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  background: #12082a;
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
   padding-bottom: 12px;
 }
 
-/* FRAME */
 .frame {
   position: relative;
   width: 320px;
-  margin-top: 12px;
   flex-shrink: 0;
 }
 
 canvas {
   display: block;
   width: 320px;
-  height: 500px;
-  border-left: 1.5px solid rgba(255,255,255,0.08);
-  border-right: 1.5px solid rgba(255,255,255,0.08);
+  height: 480px;
+  cursor: crosshair;
+  border-radius: 14px;
+  box-shadow: 0 0 40px rgba(255,61,154,0.25);
 }
 
-/* SCREENS */
+/* ── Screens ── */
 .screen {
   position: absolute;
   inset: 0;
@@ -696,233 +825,266 @@ canvas {
   align-items: flex-end;
   justify-content: center;
   padding-bottom: 28px;
-  background: linear-gradient(to bottom, rgba(6,6,15,0.1) 0%, rgba(6,6,15,0.97) 55%);
+  background: linear-gradient(to bottom, rgba(18,8,42,0) 20%, rgba(18,8,42,0.97) 52%);
+  border-radius: 14px;
+  pointer-events: all;
 }
 
 .screen-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   width: 100%;
+  gap: 0;
+}
+
+.over-inner { gap: 5px; }
+
+.candy-deco {
+  font-size: 22px;
+  margin-bottom: 10px;
+  animation: bounce 1.6s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
 }
 
 .badge {
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 800;
   letter-spacing: 0.3em;
-  color: rgba(241,196,15,0.7);
-  padding: 3px 10px;
-  border: 0.5px solid rgba(241,196,15,0.25);
+  color: #FF9DE2;
+  padding: 4px 14px;
+  border: 1.5px solid rgba(255,157,226,0.3);
+  border-radius: 99px;
+  margin-bottom: 12px;
+  background: rgba(255,110,180,0.07);
+}
+
+.badge.danger {
+  color: #FF6B81;
+  border-color: rgba(255,107,129,0.4);
+  background: rgba(255,107,129,0.07);
+}
+
+.title-main {
+  font-family: 'Fredoka One', cursive;
+  font-size: 52px;
+  font-weight: 400;
+  color: #fff;
+  text-align: center;
+  line-height: 0.92;
+  margin: 0 0 14px;
+  text-shadow: 0 0 32px rgba(255,110,180,0.4);
+}
+
+.title-accent {
+  color: #FF6EB4;
+  text-shadow: 0 0 28px rgba(255,110,180,0.7);
+}
+
+.subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.32);
+  text-align: center;
+  line-height: 2;
+  margin: 0 0 24px;
+}
+
+.over-score-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.28);
+  margin: 6px 0 4px;
+}
+
+.over-score {
+  font-family: 'Fredoka One', cursive;
+  font-size: 72px;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(255,110,180,0.5);
+  margin-bottom: 4px;
+}
+
+.hs-line {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.26);
+  letter-spacing: 0.1em;
   margin-bottom: 14px;
 }
 
-.badge.danger { color: rgba(231,76,60,0.8); border-color: rgba(231,76,60,0.3); }
-
-.title-main {
-  font-size: 62px;
-  font-weight: 700;
-  color: #fff;
-  text-align: center;
-  line-height: 0.88;
-  letter-spacing: -0.02em;
-  margin: 0 0 18px;
-}
-
-.title-accent { color: #f1c40f; }
-
-.subtitle {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.35);
-  text-align: center;
-  line-height: 1.9;
-  margin: 0 0 26px;
-}
-
-.over-score-label { font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
-.over-score { font-size: 76px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 8px; }
-
-.hs-line { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 20px; letter-spacing: 0.08em; }
-.hs-line.gold { color: #f1c40f; }
+.hs-line.gold { color: #FFD32A; text-shadow: 0 0 12px rgba(255,211,42,0.5); }
 
 .stat-row {
   display: flex;
-  border: 0.5px solid rgba(255,255,255,0.12);
-  margin-bottom: 24px;
+  border: 1.5px solid rgba(255,110,180,0.18);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background: rgba(255,110,180,0.04);
 }
 
-.stat { padding: 10px 14px; text-align: center; border-right: 0.5px solid rgba(255,255,255,0.12); }
+.stat {
+  padding: 10px 18px;
+  text-align: center;
+  border-right: 1px solid rgba(255,110,180,0.12);
+}
 .stat:last-child { border-right: none; }
-.sv { font-size: 22px; font-weight: 600; color: #fff; }
-.sk { font-size: 8px; color: rgba(255,255,255,0.28); letter-spacing: 0.12em; margin-top: 2px; }
 
+.sv { font-family: 'Fredoka One', cursive; font-size: 22px; color: #fff; }
+.sk {
+  font-size: 8px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.26);
+  letter-spacing: 0.14em;
+  margin-top: 2px;
+}
+
+/* ── Buttons ── */
 .btn-start {
-  background: transparent;
-  border: 0.5px solid rgba(241,196,15,0.4);
-  padding: 13px 44px;
-  font-family: inherit;
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  color: #f1c40f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #FF6EB4, #FF3D9A);
+  border: none;
+  border-radius: 99px;
+  padding: 14px 44px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: #fff;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  animation: btn-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 4px 26px rgba(255,61,154,0.45);
+  transition: transform 0.12s, box-shadow 0.12s;
+  margin-bottom: 10px;
 }
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 34px rgba(255,61,154,0.6); }
+.btn-start:active { transform: scale(0.95); }
 
-@keyframes btn-pulse {
-  0%, 100% { border-color: rgba(241,196,15,0.4); }
-  50%       { border-color: rgba(241,196,15,0.9); box-shadow: 0 0 12px rgba(241,196,15,0.15); }
-}
-
-.btn-start:hover  { background: rgba(241,196,15,0.08); }
-.btn-start:active { opacity: 0.7; }
+.btn-icon { font-size: 18px; }
 
 .hint-row {
-  display: flex;
-  justify-content: space-between;
-  width: 290px;
-  margin-top: 16px;
   font-size: 9px;
-  letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.18);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.16);
 }
 
-/* HUD OVERLAY */
+/* ── HUD ── */
 .hud-overlay {
   position: absolute;
   top: 0; left: 0; right: 0;
   pointer-events: none;
+  z-index: 5;
 }
 
 .hud-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px 6px;
-  background: linear-gradient(to bottom, rgba(6,6,15,0.85) 0%, rgba(6,6,15,0) 100%);
+  padding: 8px 16px;
+  background: linear-gradient(to bottom, rgba(18,8,42,0.9) 0%, transparent 100%);
 }
 
-.hud-cell { min-width: 60px; }
-.hud-cell.center { display: flex; gap: 4px; align-items: center; justify-content: center; }
-.hud-cell.right { text-align: right; }
-.hk { font-size: 8px; color: rgba(255,255,255,0.28); letter-spacing: 0.2em; }
-.hv { font-size: 20px; font-weight: 600; color: #fff; line-height: 1; }
+.hud-cell { min-width: 64px; }
+.hud-cell.center { display: flex; flex-direction: column; align-items: center; }
+.hud-cell.right  { text-align: right; }
 
-.stage-pip {
-  width: 8px;
-  height: 8px;
-  border: 0.5px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.05);
-  transition: background 0.2s;
-}
-.stage-pip.lit { background: #f1c40f; border-color: rgba(241,196,15,0.6); }
-
-/* NOS PANEL */
-.nos-panel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 320px;
-  padding: 7px 12px;
-  background: #09090f;
-  border: 1px solid rgba(255,255,255,0.07);
-  border-top: none;
-  transition: border-color 0.2s;
+.hk {
+  font-size: 8px;
+  font-weight: 800;
+  color: rgba(255,157,226,0.55);
+  letter-spacing: 0.22em;
 }
 
-.nos-panel.ready  { border-color: rgba(241,196,15,0.35); }
-.nos-panel.active { border-color: rgba(241,196,15,0.7); background: rgba(241,196,15,0.06); }
-
-.nos-pips { display: flex; gap: 4px; }
-
-.np {
-  width: 16px;
-  height: 8px;
-  background: rgba(255,255,255,0.06);
-  border: 0.5px solid rgba(255,255,255,0.1);
-  transition: background 0.12s;
+.hv {
+  font-family: 'Fredoka One', cursive;
+  font-size: 22px;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255,110,180,0.4);
 }
 
-.np.f { background: rgba(241,196,15,0.5); border-color: rgba(241,196,15,0.7); }
-@keyframes np-r { 0%,100% { background: rgba(241,196,15,0.5); } 50% { background: rgba(241,196,15,1); } }
-.np.r { animation: np-r 0.8s infinite; border-color: #f1c40f; }
-@keyframes np-a { 0%,100% { background: rgba(241,196,15,0.8); } 50% { background: #fff; } }
-.np.a { animation: np-a 0.18s infinite; border-color: #f1c40f; }
+.next-label {
+  font-size: 8px;
+  font-weight: 800;
+  color: rgba(255,157,226,0.45);
+  letter-spacing: 0.16em;
+  margin-bottom: 4px;
+}
 
-.nos-info { display: flex; align-items: center; gap: 8px; flex: 1; }
-.nos-tag  { font-size: 9px; letter-spacing: 0.2em; color: rgba(241,196,15,0.6); }
-.nos-status { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.06em; }
-.nos-panel.ready  .nos-status { color: #f1c40f; }
-.nos-panel.active .nos-status { color: #f1c40f; font-weight: 600; }
-.nos-risk { font-size: 9px; color: rgba(231,76,60,0.8); letter-spacing: 0.05em; margin-left: auto; }
+.next-marble {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.28);
+  box-shadow: 0 0 8px currentColor;
+}
 
-/* CONTROLS */
+.danger-bar {
+  height: 3px;
+  background: linear-gradient(90deg, #FF4757, #FF6EB4, #FF4757);
+  background-size: 200% 100%;
+  animation: dbar 0.5s linear infinite;
+  transition: width 0.3s, opacity 0.3s;
+}
+
+@keyframes dbar {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* ── Controls ── */
 .controls {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   width: 320px;
-  padding: 8px 0 6px;
+  padding: 8px 0 4px;
 }
 
 .cb {
   flex: 1;
   height: 62px;
-  background: rgba(255,255,255,0.02);
-  border: 0.5px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.7);
-  font-size: 18px;
-  font-family: inherit;
+  background: rgba(255,110,180,0.07);
+  border: 1.5px solid rgba(255,110,180,0.18);
+  border-radius: 16px;
+  color: rgba(255,255,255,0.65);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  touch-action: manipulation;
-  transition: background 0.1s;
+  transition: transform 0.1s, background 0.1s;
 }
 
-.cb:active { background: rgba(255,255,255,0.08); }
-
-/* NOS CONTROL BUTTON */
-.nos {
-  flex: 1.4;
-  gap: 3px;
-  background: rgba(241,196,15,0.03);
-  border-color: rgba(241,196,15,0.15);
-  cursor: not-allowed;
-  opacity: 0.35;
-}
-.nos:disabled { cursor: not-allowed; }
-
-.nos-icon { font-size: 20px; }
-.nos-label { font-size: 10px; letter-spacing: 0.14em; color: rgba(241,196,15,0.8); }
-
-.nos.nos-r {
-  cursor: pointer;
-  opacity: 1;
-  background: rgba(241,196,15,0.07);
-  border-color: rgba(241,196,15,0.6);
-  animation: nos-btn-pulse 0.9s ease-in-out infinite;
+.cb:active {
+  transform: scale(0.91);
+  background: rgba(255,110,180,0.18);
 }
 
-@keyframes nos-btn-pulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(241,196,15,0); }
-  50%      { box-shadow: 0 0 0 3px rgba(241,196,15,0.25); }
+.fire-btn {
+  flex: 1.8;
+  background: linear-gradient(135deg, rgba(255,110,180,0.16), rgba(255,61,154,0.10));
+  border-color: rgba(255,110,180,0.38);
+  gap: 2px;
 }
 
-.nos.nos-a {
-  cursor: default;
-  opacity: 1;
-  background: rgba(241,196,15,0.14);
-  border-color: rgba(241,196,15,0.85);
-  animation: nos-active-flash 0.2s infinite;
+.fire-btn:active {
+  background: linear-gradient(135deg, rgba(255,110,180,0.28), rgba(255,61,154,0.20));
 }
 
-@keyframes nos-active-flash {
-  0%,100% { background: rgba(241,196,15,0.1); }
-  50%      { background: rgba(241,196,15,0.22); }
+.fire-icon  { font-size: 22px; line-height: 1; }
+.fire-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255,157,226,0.75);
 }
-
-.nos.nos-r .nos-label,
-.nos.nos-a .nos-label { color: #f1c40f; }
 </style>
