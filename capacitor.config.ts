@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ballshining.popper',
-  appName: 'BallShining Popper',
+  appId: 'com.snackdigger.app',
+  appName: 'The Snack Digger',
   webDir: 'dist'
 };
 

@@ -1,1018 +1,464 @@
 <template>
-  <div class="bsp-root">
-    <!-- Animated starfield background -->
+  <div class="root">
     <div class="starfield" aria-hidden="true">
-      <div v-for="i in 40" :key="i" class="star" :style="starStyle(i)" />
+      <div v-for="i in 35" :key="i" class="star" :style="starStyle(i)" />
     </div>
 
     <div class="game-wrapper">
-      <!-- Title Bar -->
       <div class="title-bar">
-        <span class="title-logo">✦ BALL</span>
-        <span class="title-logo accent">SHINING</span>
-        <span class="title-logo">POPPER ✦</span>
+        <span class="title-accent">THE</span>
+        <span class="title-main">SNACK DIGGER</span>
       </div>
 
-      <!-- Canvas Frame -->
-      <div class="canvas-frame">
-        <canvas ref="gameCanvas" width="320" height="480" class="game-canvas" />
-
-        <!-- START SCREEN -->
-        <Transition name="screen-fade">
-          <div v-if="state === 'start'" class="screen-overlay">
-            <div class="screen-card">
-              <div class="orb-deco">
-                <div class="orb orb-1" />
-                <div class="orb orb-2" />
-                <div class="orb orb-3" />
-              </div>
-              <p class="chip-label">⚡ ARCADE EDITION</p>
-              <h1 class="game-title">Ball<br><em>Shining</em><br>Popper</h1>
-              <p class="game-desc">Cocokkan 3+ bola bercahaya<br>Jangan biarkan melewati garis bahaya!</p>
-              <button class="btn-primary" @click="beginGame">
-                <span class="btn-shine" />
-                <span class="btn-text">🌟 MULAI MAIN</span>
-              </button>
-              <div class="hint-text">TAP atau KLIK untuk tembak</div>
-            </div>
-          </div>
-        </Transition>
-
-        <!-- GAME OVER SCREEN -->
-        <Transition name="screen-fade">
-          <div v-if="state === 'over'" class="screen-overlay">
-            <div class="screen-card over-card">
-              <p class="over-emoji">💥✨💥</p>
-              <p class="chip-label danger-chip">GAME OVER</p>
-              <div class="score-display">
-                <span class="score-tiny">SKOR KAMU</span>
-                <span class="score-big">{{ score }}</span>
-              </div>
-              <div class="hs-badge" :class="{ newrecord: score >= highScore && score > 0 }">
-                <template v-if="score >= highScore && score > 0">⭐ REKOR BARU ⭐</template>
-                <template v-else>REKOR: {{ highScore }}</template>
-              </div>
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <span class="stat-val">{{ level }}</span>
-                  <span class="stat-key">LEVEL</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-val">{{ popCount }}</span>
-                  <span class="stat-key">POP</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-val">{{ shotsFired }}</span>
-                  <span class="stat-key">TEMBAK</span>
-                </div>
-              </div>
-              <button class="btn-primary" @click="beginGame">
-                <span class="btn-shine" />
-                <span class="btn-text">🔄 COBA LAGI</span>
-              </button>
-            </div>
-          </div>
-        </Transition>
-
-        <!-- HUD -->
-        <div v-if="state === 'play'" class="hud">
-          <div class="hud-left">
-            <span class="hud-label">SKOR</span>
-            <span class="hud-value">{{ score }}</span>
-          </div>
-          <div class="hud-center">
-            <span class="hud-label">NEXT</span>
-            <div class="next-ball" :style="{ background: ballColors[nextBallColor], boxShadow: `0 0 10px ${ballColors[nextBallColor]}` }" />
-          </div>
-          <div class="hud-right">
-            <span class="hud-label">LEVEL</span>
-            <span class="hud-value">{{ level }}</span>
-          </div>
+      <div class="hud" v-if="state === 'play'">
+        <div class="hud-cell">
+          <span class="hud-label">SKOR</span>
+          <span class="hud-val">{{ score }}</span>
         </div>
-
-        <!-- Danger Bar -->
-        <div v-if="state === 'play'" class="danger-strip" :style="{ opacity: dangerOpacity, transform: `scaleX(${dangerOpacity})` }" />
+        <!-- <div class="hud-cell center">
+          <span class="hud-label">NEXT</span>
+          <div class="next-preview" :style="nextPreviewStyle" />
+        </div> -->
+        <div class="hud-cell right">
+          <span class="hud-label">REKOR</span>
+          <span class="hud-val">{{ best }}</span>
+        </div>
       </div>
 
-      <!-- Controls -->
-      <div v-if="state === 'play'" class="controls-bar">
-        <button class="ctrl-btn"
-          @touchstart.prevent="startRotate(-1)" @touchend.prevent="stopRotate"
-          @mousedown.prevent="startRotate(-1)" @mouseup.prevent="stopRotate" @mouseleave.prevent="stopRotate">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+      <div class="canvas-wrap">
+        <canvas ref="cvs" class="game-canvas" />
 
-        <button class="ctrl-btn fire-btn" @touchstart.prevent="fireMarble" @mousedown.prevent="fireMarble">
-          <span class="fire-glow" />
-          <span class="fire-icon">⚡</span>
-          <span class="fire-label">TEMBAK</span>
-        </button>
+        <Transition name="fade">
+          <div v-if="state === 'start'" class="overlay">
+            <div class="overlay-card">
+              <div class="worm-deco">
+                <div v-for="i in 5" :key="i" class="worm-seg" :style="wormSegStyle(i)" />
+              </div>
+              <p class="chip">ARCADE</p>
+              <h1 class="big-title">The Snack<br><em>Digger</em></h1>
+              <p class="desc">Makan snack untuk tumbuh<br>Jangan tabrak dinding atau tubuhmu!</p>
+              <button class="btn-start" @touchstart.prevent="beginGame" @click="beginGame">
+                MULAI MAIN
+              </button>
+            </div>
+          </div>
+        </Transition>
 
-        <button class="ctrl-btn"
-          @touchstart.prevent="startRotate(1)" @touchend.prevent="stopRotate"
-          @mousedown.prevent="startRotate(1)" @mouseup.prevent="stopRotate" @mouseleave.prevent="stopRotate">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <Transition name="fade">
+          <div v-if="state === 'over'" class="overlay">
+            <div class="overlay-card">
+              <p class="chip danger-chip">GAME OVER</p>
+              <div class="final-score">{{ score }}</div>
+              <p class="new-record" v-if="isNewRecord">REKOR BARU!</p>
+              <p class="over-sub" v-else>Rekor: {{ best }}</p>
+              <div class="stats-row">
+                <div class="stat">
+                  <span class="stat-val">{{ snacksEaten }}</span>
+                  <span class="stat-key">SNACK</span>
+                </div>
+              </div>
+              <button class="btn-start" @touchstart.prevent="beginGame" @click="beginGame">
+                COBA LAGI
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <div class="dpad" v-if="state === 'play'">
+        <div class="dpad-row">
+          <button class="dpad-btn"
+            @touchstart.prevent="setDir(0,-1)" @mousedown.prevent="setDir(0,-1)">
+            <svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 17V5M5 11l6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+        </div>
+        <div class="dpad-row">
+          <button class="dpad-btn"
+            @touchstart.prevent="setDir(-1,0)" @mousedown.prevent="setDir(-1,0)">
+            <svg width="22" height="22" viewBox="0 0 22 22"><path d="M17 11H5M11 5l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+          <button class="dpad-btn center-btn" @touchstart.prevent="fireBoost" @mousedown.prevent="fireBoost">
+            <svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6" fill="currentColor" opacity="0.3"/><circle cx="9" cy="9" r="3" fill="currentColor"/></svg>
+          </button>
+          <button class="dpad-btn"
+            @touchstart.prevent="setDir(1,0)" @mousedown.prevent="setDir(1,0)">
+            <svg width="22" height="22" viewBox="0 0 22 22"><path d="M5 11h12M11 5l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+        </div>
+        <div class="dpad-row">
+          <button class="dpad-btn"
+            @touchstart.prevent="setDir(0,1)" @mousedown.prevent="setDir(0,1)">
+            <svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 5v12M5 11l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
-// ── Constants ─────────────────────────────────────────────
-const W = 320, H = 480
-const R = 12
-const COLS = 10, ROWS = 14
-const CELL_W = W / COLS
-const CELL_H = R * 2.1
-const TOP_PAD = R + 30
-const ROW_H = R * 1.72
-const CANNON_Y = H - 50
-const DANGER_ROW = 11
-const DROP_INTERVAL_BASE = 20
-const SPEED = 400
-const ROTATE_STEP = 0.028
-const MIN_ANGLE = -Math.PI + 0.18
-const MAX_ANGLE = -0.18
+const COLS = 18, ROWS = 22
+let CELL = 18
 
-// Shining neon palette
-const ballColors = [
-  '#00F5FF', // cyan
-  '#FF2D78', // hot pink
-  '#A259FF', // violet
-  '#FFD600', // gold
-  '#00FF94', // mint
-  '#FF6B35', // orange
-  '#38EFFF', // sky
-]
-
-// ── Reactive state ────────────────────────────────────────
-const gameCanvas = ref(null)
+const cvs = ref(null)
 const state = ref('start')
 const score = ref(0)
-const highScore = ref(0)
-const level = ref(1)
-const popCount = ref(0)
-const shotsFired = ref(0)
-const nextBallColor = ref(0)
+const best = ref(0)
+const isNewRecord = ref(false)
+const snacksEaten = ref(0)
+const snake = ref([])
 
-// ── Internal state ────────────────────────────────────────
 let ctx = null
-let grid = []
-let cannonAngle = -Math.PI / 2
-let currentColor = 0
-let bullet = null
-let particles = []
-let dropTimer = 0
-let dropInterval = DROP_INTERVAL_BASE
-let pops = 0, shots = 0, maxRow = 0
-let rotateDir = 0
-let animId = null
-let lastTs = 0
-let gameActive = false
+let dir = { x: 1, y: 0 }
+let nextDir = { x: 1, y: 0 }
+let snacks = []
+let loopId = null
+let speed = 160
+let tickCount = 0
+let nextColor = '#FFD600'
 
-// ── Star decoration helper ────────────────────────────────
+let resizeObserver = null
+
+const SNACK_TYPES = [
+  { color: '#FFD600', pts: 10, prob: 0.55, r: 4 },
+  { color: '#00F5C4', pts: 25, prob: 0.28, r: 5 },
+  { color: '#FF6B6B', pts: 50, prob: 0.17, r: 6 },
+]
+
+const nextPreviewStyle = computed(() => ({
+  background: nextColor,
+  boxShadow: `0 0 8px ${nextColor}55`,
+}))
+
 function starStyle(i) {
-  const seed = i * 137.508
-  const x = (seed * 31) % 100
-  const y = (seed * 17) % 100
-  const size = 1 + (i % 3)
-  const delay = (i * 0.3) % 4
-  const dur = 2 + (i % 3)
+  const s = i * 137.5
   return {
-    left: x + '%',
-    top: y + '%',
-    width: size + 'px',
-    height: size + 'px',
-    animationDelay: delay + 's',
-    animationDuration: dur + 's',
+    left: (s * 31 % 100) + '%',
+    top: (s * 17 % 100) + '%',
+    width: (1 + i % 3) + 'px',
+    height: (1 + i % 3) + 'px',
+    animationDelay: (i * 0.25 % 4) + 's',
+    animationDuration: (2 + i % 3) + 's',
   }
 }
 
-// ── Computed ──────────────────────────────────────────────
-const dangerOpacity = computed(() => {
-  if (state.value !== 'play') return 0
-  return Math.max(0, (maxRow / DANGER_ROW - 0.6) * 2.5)
-})
-
-// ── Grid helpers ──────────────────────────────────────────
-function hexCenter(col, row) {
-  return { x: col * CELL_W + CELL_W / 2, y: row * CELL_H + TOP_PAD }
-}
-
-function hexNeighbors(row, col) {
-  const result = []
-  for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-    const r = row + dr, c = col + dc
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) result.push({ row: r, col: c })
+function wormSegStyle(i) {
+  const colors = ['#00F5C4','#00E0B0','#00C89C','#00B088','#009874']
+  return {
+    background: colors[i - 1],
+    width: (28 - i * 3) + 'px',
+    height: (28 - i * 3) + 'px',
+    marginLeft: i === 1 ? '0' : '-6px',
   }
-  return result
 }
 
-function makeGrid() {
-  return Array.from({ length: ROWS }, () => Array(COLS).fill(null))
+function pickSnack() {
+  const r = Math.random()
+  let acc = 0
+  for (const t of SNACK_TYPES) { acc += t.prob; if (r < acc) return t }
+  return SNACK_TYPES[0]
 }
 
-function colorCount() {
-  return Math.min(3 + Math.floor(level.value / 2), ballColors.length)
+function placeSnack() {
+  const body = new Set(snake.value.map(s => s.x + ',' + s.y))
+  const existing = new Set(snacks.map(s => s.x + ',' + s.y))
+  const free = []
+  for (let x = 0; x < COLS; x++)
+    for (let y = 0; y < ROWS; y++)
+      if (!body.has(x + ',' + y) && !existing.has(x + ',' + y)) free.push({ x, y })
+  if (!free.length) return null
+  const pos = free[Math.floor(Math.random() * free.length)]
+  const t = pickSnack()
+  return { ...pos, ...t }
 }
 
-function randColor() {
-  return Math.floor(Math.random() * colorCount())
+function initGame() {
+  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2)
+  snake.value = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }]
+  dir = { x: 1, y: 0 }; nextDir = { x: 1, y: 0 }
+  snacks = []
+  for (let i = 0; i < 3; i++) { const s = placeSnack(); if (s) snacks.push(s) }
+  score.value = 0; snacksEaten.value = 0
+  speed = 160; tickCount = 0; isNewRecord.value = false
+  nextColor = snacks[0]?.color || '#FFD600'
 }
 
-function initGrid() {
-  grid = makeGrid()
-  for (let row = 0; row < 5; row++)
-    for (let col = 0; col < COLS; col++)
-      if (Math.random() < 0.85) grid[row][col] = { color: randColor() }
-  recalcMaxRow()
-}
-
-function recalcMaxRow() {
-  maxRow = 0
-  for (let r = ROWS - 1; r >= 0; r--)
-    for (let c = 0; c < COLS; c++)
-      if (grid[r][c]) { maxRow = r; return }
-}
-
-// ── Match logic ───────────────────────────────────────────
-function floodFill(row, col, color, visited) {
-  const key = row * COLS + col
-  if (visited[key]) return []
-  if (!grid[row]?.[col] || grid[row][col].color !== color) return []
-  visited[key] = true
-  const group = [{ row, col }]
-  for (const n of hexNeighbors(row, col))
-    group.push(...floodFill(n.row, n.col, color, visited))
-  return group
-}
-
-function findFloating() {
-  const attached = new Uint8Array(ROWS * COLS)
-  const queue = []
-  for (let c = 0; c < COLS; c++)
-    if (grid[0][c] && !attached[c]) { attached[c] = 1; queue.push({ row: 0, col: c }) }
-  let head = 0
-  while (head < queue.length) {
-    const { row, col } = queue[head++]
-    for (const n of hexNeighbors(row, col)) {
-      const key = n.row * COLS + n.col
-      if (grid[n.row][n.col] && !attached[key]) { attached[key] = 1; queue.push(n) }
+function tick() {
+  dir = { ...nextDir }
+  const head = { x: snake.value[0].x + dir.x, y: snake.value[0].y + dir.y }
+  if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { endGame(); return }
+  if (snake.value.some(s => s.x === head.x && s.y === head.y)) { endGame(); return }
+  snake.value = [head, ...snake.value]
+  let ate = false
+  for (let i = snacks.length - 1; i >= 0; i--) {
+    if (snacks[i].x === head.x && snacks[i].y === head.y) {
+      score.value += snacks[i].pts
+      snacksEaten.value++
+      snacks.splice(i, 1)
+      ate = true; break
     }
   }
-  const floating = []
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-      if (grid[r][c] && !attached[r * COLS + c]) floating.push({ row: r, col: c })
-  return floating
+  if (!ate) snake.value = snake.value.slice(0, -1)
+  while (snacks.length < 3) { const s = placeSnack(); if (!s) break; snacks.push(s) }
+  nextColor = snacks[0]?.color || '#FFD600'
+  tickCount++
+  if (tickCount % 6 === 0) speed = Math.max(65, speed - 2)
+  draw()
+  loopId = setTimeout(tick, speed)
 }
 
-function emitParticles(x, y, color, count = 12) {
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2
-    const spd = 60 + Math.random() * 180
-    particles.push({ x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-      r: 2 + Math.random() * 4, color, life: 0.8 + Math.random() * 0.5 })
-  }
-}
-
-function tryMatch(row, col) {
-  if (!grid[row]?.[col]) return
-  const visited = new Uint8Array(ROWS * COLS)
-  const group = floodFill(row, col, grid[row][col].color, visited)
-  if (group.length >= 3) {
-    for (const { row: r, col: c } of group) {
-      if (grid[r]?.[c]) { const { x, y } = hexCenter(c, r); emitParticles(x, y, ballColors[grid[r][c].color], 10); grid[r][c] = null }
-    }
-    pops += group.length
-    popCount.value = pops
-    score.value += group.length * 10 * level.value
-    for (const { row: r, col: c } of findFloating()) {
-      if (grid[r]?.[c]) { const { x, y } = hexCenter(c, r); emitParticles(x, y, ballColors[grid[r][c].color], 6); score.value += 5 * level.value; grid[r][c] = null; pops++ }
-    }
-    popCount.value = pops
-    if (score.value >= level.value * 300) { level.value++; dropInterval = Math.max(8, DROP_INTERVAL_BASE - level.value * 1.2) }
-  }
-  recalcMaxRow()
-  if (maxRow >= DANGER_ROW) endGame()
-}
-
-function dropRow() {
-  for (let r = ROWS - 1; r > 0; r--) {
-    grid[r] = []
-    for (let c = 0; c < COLS; c++)
-      grid[r][c] = grid[r-1][c] ? { color: grid[r-1][c].color } : null
-  }
-  grid[0] = Array(COLS).fill(null)
-  for (let c = 0; c < COLS; c++)
-    if (Math.random() < 0.75) grid[0][c] = { color: randColor() }
-  recalcMaxRow()
-  if (maxRow >= DANGER_ROW) endGame()
-}
-
-function placeMarble(bx, by, color) {
-  let bestRow = -1, bestCol = -1, minDist = Infinity
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c]) continue
-      const { x, y } = hexCenter(c, r)
-      const d = Math.hypot(bx - x, by - y)
-      if (d < minDist && d < R * 2.2) {
-        const hasNeighbor = r === 0 || hexNeighbors(r, c).some(n => grid[n.row]?.[n.col])
-        if (hasNeighbor) { minDist = d; bestRow = r; bestCol = c }
-      }
-    }
-  }
-  if (bestRow === -1) {
-    for (let r = 0; r < ROWS; r++)
-      for (let c = 0; c < COLS; c++) {
-        if (grid[r][c]) continue
-        const { x, y } = hexCenter(c, r)
-        const d = Math.hypot(bx - x, by - y)
-        if (d < minDist && d < R * 2.5) { minDist = d; bestRow = r; bestCol = c }
-      }
-  }
-  if (bestRow === -1) { endGame(); return }
-  grid[bestRow][bestCol] = { color }
-  tryMatch(bestRow, bestCol)
-  if (maxRow >= DANGER_ROW) endGame()
-}
-
-// ── Drawing ───────────────────────────────────────────────
-function drawBackground() {
-  const grad = ctx.createLinearGradient(0, 0, 0, H)
-  grad.addColorStop(0, '#03001C')
-  grad.addColorStop(0.5, '#0A0628')
-  grad.addColorStop(1, '#130042')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
-
-  // Grid dots
-  ctx.fillStyle = 'rgba(100,120,255,0.06)'
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++) {
-      const { x, y } = hexCenter(c, r)
-      ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill()
-    }
-
-  // Danger line
-  const dangerY = DANGER_ROW * CELL_H + TOP_PAD - R
-  ctx.save()
-  ctx.strokeStyle = 'rgba(255,45,120,0.9)'
-  ctx.lineWidth = 2
-  ctx.setLineDash([6, 5])
-  ctx.shadowColor = '#FF2D78'
-  ctx.shadowBlur = 8
-  ctx.beginPath(); ctx.moveTo(0, dangerY); ctx.lineTo(W, dangerY); ctx.stroke()
-  ctx.setLineDash([])
-  ctx.restore()
-}
-
-function drawBall(x, y, colorIdx, radius) {
-  radius = radius || R
-  const color = ballColors[colorIdx]
-
-  ctx.save()
-  ctx.shadowColor = color
-  ctx.shadowBlur = 14
-
-  // Main sphere gradient
-  const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.35, radius * 0.05, x, y, radius)
-  g.addColorStop(0, lighten(color, 60))
-  g.addColorStop(0.45, color)
-  g.addColorStop(1, darken(color, 40))
-  ctx.fillStyle = g
-  ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill()
-  ctx.restore()
-
-  // Ring
-  ctx.strokeStyle = `${color}55`
-  ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.arc(x, y, radius + 2, 0, Math.PI * 2); ctx.stroke()
-
-  // Specular highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'
-  ctx.beginPath(); ctx.arc(x - radius * 0.28, y - radius * 0.3, radius * 0.2, 0, Math.PI * 2); ctx.fill()
-
-  // Inner shine
-  ctx.fillStyle = 'rgba(255,255,255,0.15)'
-  ctx.beginPath(); ctx.arc(x + radius * 0.1, y + radius * 0.1, radius * 0.45, 0, Math.PI * 2); ctx.fill()
-}
-
-function lighten(hex, amt) {
-  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
-  return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`
-}
-function darken(hex, amt) {
-  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
-  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`
-}
-
-function drawCannon() {
-  const cx = W / 2, cy = CANNON_Y
-
-  // Base platform glow
-  ctx.save()
-  ctx.shadowColor = '#A259FF'
-  ctx.shadowBlur = 18
-  const baseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 24)
-  baseGrad.addColorStop(0, '#C77DFF')
-  baseGrad.addColorStop(1, '#7B2FBE')
-  ctx.fillStyle = baseGrad
-  ctx.beginPath(); ctx.ellipse(cx, cy + 5, 24, 13, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.restore()
-
-  ctx.save()
-  ctx.translate(cx, cy)
-  ctx.rotate(cannonAngle)
-
-  // Barrel
-  const barrelGrad = ctx.createLinearGradient(-6, -34, 6, -34)
-  barrelGrad.addColorStop(0, '#E0C3FC')
-  barrelGrad.addColorStop(0.5, '#8EC5FC')
-  barrelGrad.addColorStop(1, '#A259FF')
-  ctx.fillStyle = barrelGrad
-  ctx.shadowColor = '#A259FF'
-  ctx.shadowBlur = 12
-  ctx.beginPath(); ctx.roundRect(-5, -32, 10, 32, 4); ctx.fill()
-
-  // Barrel tip
-  ctx.fillStyle = '#00F5FF'
-  ctx.shadowColor = '#00F5FF'
-  ctx.shadowBlur = 16
-  ctx.beginPath(); ctx.roundRect(-5, -36, 10, 8, 3); ctx.fill()
-  ctx.restore()
-
-  // Aim guide
-  for (let i = 1; i <= 10; i++) {
-    const t = i / 10
-    const gx = cx + Math.cos(cannonAngle) * (28 + t * 130)
-    const gy = cy + Math.sin(cannonAngle) * (28 + t * 130)
-    ctx.fillStyle = `rgba(0,245,255,${0.22 * (1 - t)})`
-    ctx.beginPath(); ctx.arc(gx, gy, 2, 0, Math.PI * 2); ctx.fill()
-  }
-
-  drawBall(cx, cy - 4, currentColor, R - 1)
-}
-
-function drawParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i]
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 240 * dt; p.life -= dt * 1.6
-    if (p.life <= 0) { particles.splice(i, 1); continue }
-    ctx.save()
-    ctx.globalAlpha = Math.min(1, p.life)
-    ctx.shadowColor = p.color; ctx.shadowBlur = 6
-    ctx.fillStyle = p.color
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-  }
-}
-
-function render() {
+function draw() {
   if (!ctx) return
-  drawBackground()
-  for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++) {
-      const cell = grid[r]?.[c]
-      if (cell && cell.color !== undefined) { const { x, y } = hexCenter(c, r); drawBall(x, y, cell.color) }
-    }
-  if (bullet && bullet.color !== undefined) drawBall(bullet.x, bullet.y, bullet.color)
-  drawCannon()
-  drawParticles(1 / 60)
-}
-
-// ── Game loop ─────────────────────────────────────────────
-function update(dt) {
-  if (!gameActive) return
-  if (rotateDir !== 0) cannonAngle = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, cannonAngle + rotateDir * ROTATE_STEP))
-  dropTimer += dt
-  if (dropTimer >= dropInterval) { dropTimer = 0; dropRow() }
-  if (bullet) {
-    bullet.x += bullet.vx * dt; bullet.y += bullet.vy * dt
-    if (bullet.x - R < 0) { bullet.x = R; bullet.vx = Math.abs(bullet.vx) }
-    if (bullet.x + R > W) { bullet.x = W - R; bullet.vx = -Math.abs(bullet.vx) }
-    if (bullet.y - R <= TOP_PAD - R) { placeMarble(bullet.x, bullet.y, bullet.color); bullet = null; return }
-    for (let r = 0; r <= Math.min(maxRow + 2, ROWS - 1); r++)
-      for (let c = 0; c < COLS; c++) {
-        const cell = grid[r]?.[c]
-        if (!cell) continue
-        const { x, y } = hexCenter(c, r)
-        if (Math.hypot(bullet.x - x, bullet.y - y) < R * 1.85) { placeMarble(bullet.x, bullet.y, bullet.color); bullet = null; return }
+  const W = COLS * CELL, H = ROWS * CELL
+  ctx.fillStyle = '#060d0a'
+  ctx.fillRect(0, 0, W, H)
+  for (let x = 0; x < COLS; x++)
+    for (let y = 0; y < ROWS; y++) {
+      if ((x + y) % 2 === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.018)'
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL)
       }
-    if (bullet.y + R > H) bullet = null
+    }
+  snacks.forEach(s => {
+    const px = s.x * CELL + CELL / 2, py = s.y * CELL + CELL / 2
+    ctx.beginPath(); ctx.arc(px, py, s.r, 0, Math.PI * 2)
+    ctx.fillStyle = s.color; ctx.fill()
+    ctx.beginPath(); ctx.arc(px - s.r * 0.3, py - s.r * 0.3, s.r * 0.28, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill()
+  })
+  snake.value.forEach((seg, i) => {
+    const t = i / snake.value.length
+    const px = seg.x * CELL, py = seg.y * CELL
+    const pad = 1.5
+    if (i === 0) {
+      ctx.fillStyle = '#00F5C4'
+    } else {
+      const g = Math.round(180 - t * 60)
+      ctx.fillStyle = `rgb(0,${g},${Math.round(g * 0.6)})`
+    }
+    ctx.beginPath()
+    ctx.roundRect(px + pad, py + pad, CELL - pad * 2, CELL - pad * 2, 3)
+    ctx.fill()
+    if (i === 0) {
+      const ex = dir.x === 0 ? CELL * 0.32 : (dir.x > 0 ? CELL * 0.62 : CELL * 0.28)
+      const ey = dir.y === 0 ? CELL * 0.32 : (dir.y > 0 ? CELL * 0.62 : CELL * 0.28)
+      const ex2 = dir.x === 0 ? CELL * 0.68 : CELL * ex / CELL
+      const ey2 = dir.y === 0 ? CELL * 0.68 : CELL * ey / CELL
+      ctx.fillStyle = '#060d0a'
+      ctx.beginPath(); ctx.arc(px + ex, py + ey, 2, 0, Math.PI * 2); ctx.fill()
+      if (dir.x === 0) { ctx.beginPath(); ctx.arc(px + ex2, py + ey, 2, 0, Math.PI * 2); ctx.fill() }
+      else { ctx.beginPath(); ctx.arc(px + ex, py + ey2, 2, 0, Math.PI * 2); ctx.fill() }
+    }
+  })
+}
+
+async function beginGame() {
+  state.value = 'play'
+  initGame()
+  await nextTick()
+  // Force canvas setup with proper dimensions
+  setupCanvas()
+  if (!ctx) {
+    console.error('Canvas context not available')
+    return
   }
-}
-
-function gameLoop(ts) {
-  const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.033) : 0
-  lastTs = ts
-  update(dt); render()
-  animId = requestAnimationFrame(gameLoop)
-}
-
-// ── Input ─────────────────────────────────────────────────
-function onCanvasClick(e) {
-  if (state.value !== 'play') return
-  const rect = gameCanvas.value.getBoundingClientRect()
-  const sx = W / rect.width, sy = H / rect.height
-  const cx = e.clientX ?? e.touches?.[0]?.clientX
-  const cy = e.clientY ?? e.touches?.[0]?.clientY
-  if (cx == null) return
-  const mx = (cx - rect.left) * sx, my = (cy - rect.top) * sy
-  cannonAngle = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, Math.atan2(my - CANNON_Y, mx - W / 2)))
-  fireMarble()
-}
-
-function onKeyDown(e) {
-  if (state.value !== 'play') return
-  if (e.key === 'ArrowLeft')  { e.preventDefault(); cannonAngle = Math.max(MIN_ANGLE, cannonAngle - ROTATE_STEP * 2) }
-  if (e.key === 'ArrowRight') { e.preventDefault(); cannonAngle = Math.min(MAX_ANGLE, cannonAngle + ROTATE_STEP * 2) }
-  if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); fireMarble() }
-}
-
-function startRotate(dir) { rotateDir = dir }
-function stopRotate() { rotateDir = 0 }
-
-function fireMarble() {
-  if (!gameActive || bullet) return
-  bullet = { x: W / 2, y: CANNON_Y - 4, vx: Math.cos(cannonAngle) * SPEED, vy: Math.sin(cannonAngle) * SPEED, color: currentColor }
-  currentColor = nextBallColor.value
-  nextBallColor.value = randColor()
-  shots++; shotsFired.value = shots
-}
-
-function beginGame() {
-  state.value = 'play'; score.value = 0; level.value = 1; popCount.value = 0; shotsFired.value = 0
-  pops = 0; shots = 0; bullet = null; particles = []
-  cannonAngle = -Math.PI / 2; dropTimer = 0; dropInterval = DROP_INTERVAL_BASE
-  rotateDir = 0; lastTs = 0; gameActive = true
-  initGrid(); currentColor = randColor(); nextBallColor.value = randColor()
+  draw()
+  if (loopId) clearTimeout(loopId)
+  loopId = setTimeout(tick, speed)
 }
 
 function endGame() {
-  gameActive = false; state.value = 'over'
-  if (score.value > highScore.value) highScore.value = score.value
-  bullet = null
+  clearTimeout(loopId)
+  if (score.value >= best.value && score.value > 0) {
+    best.value = score.value; isNewRecord.value = true
+  }
+  state.value = 'over'
+  draw()
 }
 
+function setDir(dx, dy) {
+  if (dx === -dir.x && dy === -dir.y) return
+  nextDir = { x: dx, y: dy }
+}
+
+function fireBoost() {}
+
+function setupCanvas() {
+  if (!cvs.value) return false
+  
+  // Get the actual container size
+  const wrap = cvs.value.parentElement
+  if (!wrap) return false
+  
+  // Calculate cell size based on parent width
+  const containerWidth = wrap.clientWidth
+  const containerHeight = wrap.clientHeight || 400
+  
+  // Use the smaller dimension to ensure square cells
+  const maxCellByWidth = Math.floor(containerWidth / COLS)
+  const maxCellByHeight = Math.floor(containerHeight / ROWS)
+  CELL = Math.min(maxCellByWidth, maxCellByHeight, 24) // Cap at 24px max
+  
+  if (CELL < 1) CELL = 12 // fallback
+  
+  cvs.value.width = COLS * CELL
+  cvs.value.height = ROWS * CELL
+  ctx = cvs.value.getContext('2d')
+  
+  // Set canvas CSS dimensions to match actual size
+  cvs.value.style.width = `${cvs.value.width}px`
+  cvs.value.style.height = `${cvs.value.height}px`
+  
+  return true
+}
+
+function onKey(e) {
+  if (state.value !== 'play') return
+  const map = {
+    ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0],
+    w: [0,-1], s: [0,1], a: [-1,0], d: [1,0]
+  }
+  if (map[e.key]) { e.preventDefault(); setDir(...map[e.key]) }
+}
+
+let touchStartX = 0, touchStartY = 0
+function onTouchStart(e) { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY }
+function onTouchEnd(e) {
+  if (state.value !== 'play') return
+  const dx = e.changedTouches[0].clientX - touchStartX
+  const dy = e.changedTouches[0].clientY - touchStartY
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return
+  if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0)
+  else setDir(0, dy > 0 ? 1 : -1)
+}
+
+// Update onMounted:
 onMounted(() => {
-  ctx = gameCanvas.value.getContext('2d')
-  render()
-  gameCanvas.value.addEventListener('click', onCanvasClick)
-  gameCanvas.value.addEventListener('touchstart', e => { e.preventDefault(); onCanvasClick(e) }, { passive: false })
-  document.addEventListener('keydown', onKeyDown)
-  animId = requestAnimationFrame(gameLoop)
+  setupCanvas()
+  if (ctx && cvs.value) {
+    ctx.fillStyle = '#060d0a'
+    ctx.fillRect(0, 0, cvs.value.width, cvs.value.height)
+  }
+  
+  // Watch for container size changes
+  if (cvs.value && cvs.value.parentElement) {
+    resizeObserver = new ResizeObserver(() => {
+      if (state.value === 'play') {
+        setupCanvas()
+        draw()
+      }
+    })
+    resizeObserver.observe(cvs.value.parentElement)
+  }
+  
+  document.addEventListener('keydown', onKey)
+  document.addEventListener('touchstart', onTouchStart, { passive: true })
+  document.addEventListener('touchend', onTouchEnd, { passive: true })
 })
 
+// Update onUnmounted:
 onUnmounted(() => {
-  if (animId) cancelAnimationFrame(animId)
-  document.removeEventListener('keydown', onKeyDown)
+  clearTimeout(loopId)
+  if (resizeObserver) resizeObserver.disconnect()
+  document.removeEventListener('keydown', onKey)
+  document.removeEventListener('touchstart', onTouchStart)
+  document.removeEventListener('touchend', onTouchEnd)
 })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,700;0,900;1,900&family=Rajdhani:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,700;0,900;1,900&family=Rajdhani:wght@500;600;700&display=swap');
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  touch-action: manipulation;
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; }
+
+.root {
+  position: relative; min-height: 100svh; width: 100%;
+  background: #060d0a; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-family: 'Rajdhani', sans-serif;
 }
 
-/* ── Root ── */
-.bsp-root {
+.starfield { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--dur,3s) ease-in-out infinite; opacity: 0.5; }
+@keyframes twinkle { 0%,100% { opacity: 0.1; } 50% { opacity: 0.8; } }
+
+.game-wrapper { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; padding: 12px 12px 20px; gap: 10px; }
+
+.title-bar { display: flex; align-items: baseline; gap: 8px; }
+.title-accent { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.25em; color: #00b88a; }
+.title-main { font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: 0.12em; color: #00F5C4; }
+
+.hud { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
+.hud-cell { display: flex; flex-direction: column; align-items: flex-start; min-width: 64px; }
+.hud-cell.center { align-items: center; }
+.hud-cell.right { align-items: flex-end; }
+.hud-label { font-size: 9px; font-weight: 700; letter-spacing: 0.22em; color: rgba(0,245,196,0.4); }
+.hud-val { font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 22px; color: #fff; line-height: 1.1; }
+.next-preview { width: 18px; height: 18px; border-radius: 50%; margin-top: 4px; transition: background 0.2s; }
+
+/* Add to your <style> section */
+.canvas-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100svh;
   width: 100%;
-  background: #03001C;
+  aspect-ratio: 18 / 22; /* Match COLS:ROWS ratio */
+  border-radius: 16px;
   overflow: hidden;
-  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
-}
-
-/* ── Starfield ── */
-.starfield {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-.star {
-  position: absolute;
-  border-radius: 50%;
-  background: white;
-  animation: twinkle var(--dur, 3s) ease-in-out infinite;
-  opacity: 0.6;
-}
-@keyframes twinkle {
-  0%, 100% { opacity: 0.15; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(1.4); }
-}
-
-/* ── Game wrapper ── */
-.game-wrapper {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 400px;
-  padding: 0 8px 16px;
-  gap: 0;
-}
-
-/* ── Title bar ── */
-.title-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 0 6px;
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: clamp(11px, 3vw, 14px);
-  letter-spacing: 0.15em;
-  color: rgba(162, 89, 255, 0.7);
-}
-.title-logo.accent {
-  color: #00F5FF;
-  text-shadow: 0 0 12px #00F5FF;
-}
-
-/* ── Canvas frame ── */
-.canvas-frame {
-  position: relative;
-  width: 100%;
-  max-width: 340px;
-  aspect-ratio: 320 / 480;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(162,89,255,0.3),
-    0 0 40px rgba(0,245,255,0.12),
-    0 0 80px rgba(162,89,255,0.08);
+  border: 0.5px solid rgba(0,245,196,0.18);
 }
 
 .game-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  object-fit: contain;
 }
-
-/* ── Screens ── */
-.screen-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 24px;
-  background: linear-gradient(to bottom, transparent 15%, rgba(3,0,28,0.97) 50%);
-  border-radius: 20px;
-}
-
-.screen-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  padding: 0 20px;
-  gap: 8px;
-}
-.over-card { gap: 6px; }
-
-/* Orb decorations */
-.orb-deco {
-  position: relative;
-  width: 80px;
-  height: 40px;
-  margin-bottom: 4px;
-}
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(8px);
-  opacity: 0.7;
-  animation: float 3s ease-in-out infinite;
-}
-.orb-1 { width: 30px; height: 30px; background: #00F5FF; top: 5px; left: 10px; animation-delay: 0s; }
-.orb-2 { width: 24px; height: 24px; background: #FF2D78; top: 12px; left: 30px; animation-delay: 0.8s; }
-.orb-3 { width: 20px; height: 20px; background: #A259FF; top: 2px; left: 50px; animation-delay: 1.5s; }
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.chip-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: #A259FF;
-  border: 1px solid rgba(162,89,255,0.4);
-  border-radius: 99px;
-  padding: 3px 14px;
-  background: rgba(162,89,255,0.08);
-  margin: 0;
-}
-.danger-chip { color: #FF2D78; border-color: rgba(255,45,120,0.4); background: rgba(255,45,120,0.08); }
-
-.game-title {
-  font-family: 'Exo 2', sans-serif;
-  font-style: italic;
-  font-weight: 900;
-  font-size: clamp(36px, 12vw, 46px);
-  line-height: 0.9;
-  text-align: center;
-  margin: 0;
-  color: #fff;
-  text-shadow: 0 0 30px rgba(0,245,255,0.4), 0 0 60px rgba(162,89,255,0.2);
-}
-.game-title em {
-  font-style: italic;
-  color: #00F5FF;
-  text-shadow: 0 0 20px #00F5FF, 0 0 40px rgba(0,245,255,0.5);
-}
-
-.game-desc {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgba(255,255,255,0.28);
-  text-align: center;
-  line-height: 1.8;
-  margin: 4px 0 8px;
-}
-
-.over-emoji {
-  font-size: 24px;
-  margin-bottom: 4px;
-  animation: float 1.5s ease-in-out infinite;
-}
-
-.score-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.score-tiny {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  color: rgba(255,255,255,0.25);
-}
-.score-big {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: clamp(54px, 18vw, 68px);
-  line-height: 1;
-  color: #fff;
-  text-shadow: 0 0 30px rgba(0,245,255,0.4);
-}
-
-.hs-badge {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.25);
-  margin-bottom: 4px;
-}
-.hs-badge.newrecord {
-  color: #FFD600;
-  text-shadow: 0 0 12px rgba(255,214,0,0.6);
-}
-
-.stats-grid {
-  display: flex;
-  border: 1px solid rgba(0,245,255,0.15);
-  border-radius: 14px;
-  overflow: hidden;
-  margin-bottom: 8px;
-  background: rgba(0,245,255,0.03);
-}
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 20px;
-  border-right: 1px solid rgba(0,245,255,0.1);
-}
-.stat-item:last-child { border-right: none; }
-.stat-val {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: 22px;
-  color: #fff;
-}
-.stat-key {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: rgba(0,245,255,0.4);
-  margin-top: 2px;
-}
-
-/* ── Button ── */
-.btn-primary {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: none;
-  border-radius: 99px;
-  padding: 13px 48px;
-  background: linear-gradient(135deg, #00c4ff, #7B2FBE, #FF2D78);
-  background-size: 200% 200%;
-  animation: gradShift 4s ease infinite;
-  cursor: pointer;
-  box-shadow: 0 4px 28px rgba(0,245,255,0.35), 0 0 0 1px rgba(255,255,255,0.1);
-  transition: transform 0.12s, box-shadow 0.12s;
-  margin-bottom: 4px;
-}
-@keyframes gradShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-.btn-shine {
-  position: absolute;
-  top: 0; left: -60%;
-  width: 40%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  animation: shine 2.4s ease-in-out infinite;
-}
-@keyframes shine {
-  0% { left: -60%; }
-  100% { left: 140%; }
-}
-.btn-text {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: 0.1em;
-  color: #fff;
-  position: relative;
-  z-index: 1;
-}
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 36px rgba(0,245,255,0.45); }
-.btn-primary:active { transform: scale(0.95); }
-
-.hint-text {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.14);
-}
-
-/* ── HUD ── */
-.hud {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  background: linear-gradient(to bottom, rgba(3,0,28,0.88) 0%, transparent);
-  pointer-events: none;
-  z-index: 5;
-}
-
-.hud-left, .hud-right { min-width: 60px; }
-.hud-right { text-align: right; }
-.hud-center { display: flex; flex-direction: column; align-items: center; }
-
-.hud-label {
+.game-canvas {
   display: block;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: rgba(0,245,255,0.45);
-}
-.hud-value {
-  display: block;
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: 22px;
-  color: #fff;
-  text-shadow: 0 0 10px rgba(0,245,255,0.4);
-  line-height: 1.1;
-}
-
-.next-ball {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.25);
-  margin-top: 4px;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-/* ── Danger strip ── */
-.danger-strip {
-  position: absolute;
-  bottom: 0; left: 0;
   width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, #FF2D78, #A259FF, #00F5FF, #A259FF, #FF2D78);
-  background-size: 300% 100%;
-  animation: dangerScroll 0.6s linear infinite;
-  transform-origin: left;
-  transition: opacity 0.3s, transform 0.3s;
-}
-@keyframes dangerScroll {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 300% 0%; }
+  height: 100%;
+  object-fit: contain;
 }
 
-/* ── Controls ── */
-.controls-bar {
-  display: flex;
-  gap: 6px;
-  width: 100%;
-  max-width: 340px;
-  padding: 6px 0 0;
-}
+.overlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 20px; background: linear-gradient(to bottom, transparent 10%, rgba(6,13,10,0.97) 48%); border-radius: 16px; }
+.overlay-card { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 0 24px; gap: 8px; }
 
-.ctrl-btn {
-  flex: 1;
-  height: 60px;
-  background: rgba(0,245,255,0.05);
-  border: 1px solid rgba(0,245,255,0.15);
-  border-radius: 16px;
-  color: rgba(255,255,255,0.55);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s, background 0.1s, box-shadow 0.1s;
-  gap: 2px;
-}
-.ctrl-btn:active {
-  transform: scale(0.9);
-  background: rgba(0,245,255,0.12);
-  box-shadow: 0 0 12px rgba(0,245,255,0.2);
-}
+.worm-deco { display: flex; align-items: center; margin-bottom: 4px; }
+.worm-seg { border-radius: 50%; animation: wfloat 2s ease-in-out infinite; }
+.worm-seg:nth-child(1) { animation-delay: 0s; }
+.worm-seg:nth-child(2) { animation-delay: 0.15s; }
+.worm-seg:nth-child(3) { animation-delay: 0.3s; }
+.worm-seg:nth-child(4) { animation-delay: 0.45s; }
+.worm-seg:nth-child(5) { animation-delay: 0.6s; }
+@keyframes wfloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
-.fire-btn {
-  position: relative;
-  flex: 1.8;
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(0,245,255,0.1), rgba(162,89,255,0.08));
-  border-color: rgba(0,245,255,0.3);
-}
-.fire-btn:active {
-  background: linear-gradient(135deg, rgba(0,245,255,0.2), rgba(162,89,255,0.15));
-  box-shadow: 0 0 20px rgba(0,245,255,0.25);
-}
+.chip { font-size: 9px; font-weight: 700; letter-spacing: 0.28em; color: #00b88a; border: 0.5px solid rgba(0,184,138,0.4); border-radius: 99px; padding: 3px 14px; background: rgba(0,245,196,0.06); margin: 0; }
+.danger-chip { color: #ff6b6b; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.07); }
 
-.fire-glow {
-  position: absolute;
-  inset: -2px;
-  border-radius: 16px;
-  background: conic-gradient(from 0deg, #00F5FF, #A259FF, #FF2D78, #00F5FF);
-  opacity: 0;
-  transition: opacity 0.2s;
-  animation: rotGlow 2s linear infinite;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  padding: 1px;
-}
-@keyframes rotGlow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-.fire-btn:active .fire-glow { opacity: 0.6; }
+.big-title { font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 40px; line-height: 0.95; text-align: center; margin: 0; color: #fff; }
+.big-title em { font-style: italic; color: #00F5C4; }
 
-.fire-icon {
-  font-size: 22px;
-  line-height: 1;
-  filter: drop-shadow(0 0 6px #00F5FF);
-}
-.fire-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: rgba(0,245,255,0.65);
-}
+.desc { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); text-align: center; line-height: 1.9; margin: 4px 0 6px; }
 
-/* ── Screen transitions ── */
-.screen-fade-enter-active, .screen-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.screen-fade-enter-from, .screen-fade-leave-to {
-  opacity: 0;
-}
+.final-score { font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 62px; line-height: 1; color: #fff; margin: 4px 0; }
+.new-record { font-size: 12px; font-weight: 700; letter-spacing: 0.2em; color: #FFD600; margin: 0; }
+.over-sub { font-size: 12px; color: rgba(255,255,255,0.28); letter-spacing: 0.1em; margin: 0; }
+
+.stats-row { display: flex; gap: 0; border: 0.5px solid rgba(0,245,196,0.15); border-radius: 12px; overflow: hidden; margin-bottom: 4px; }
+.stat { display: flex; flex-direction: column; align-items: center; padding: 10px 28px; }
+.stat + .stat { border-left: 0.5px solid rgba(0,245,196,0.1); }
+.stat-val { font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 24px; color: #fff; }
+.stat-key { font-size: 8px; font-weight: 700; letter-spacing: 0.18em; color: rgba(0,245,196,0.4); margin-top: 2px; }
+
+.btn-start { border: 0.5px solid rgba(0,245,196,0.5); border-radius: 99px; padding: 13px 44px; background: rgba(0,245,196,0.08); color: #00F5C4; font-family: 'Exo 2', sans-serif; font-weight: 900; font-size: 15px; letter-spacing: 0.12em; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+.btn-start:active { background: rgba(0,245,196,0.18); transform: scale(0.96); }
+
+.dpad { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dpad-row { display: flex; gap: 4px; justify-content: center; }
+.dpad-btn { width: 64px; height: 64px; background: rgba(0,245,196,0.05); border: 0.5px solid rgba(0,245,196,0.18); border-radius: 14px; color: rgba(0,245,196,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s, transform 0.1s; }
+.dpad-btn:active { background: rgba(0,245,196,0.15); transform: scale(0.92); }
+.center-btn { color: rgba(0,245,196,0.45); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
