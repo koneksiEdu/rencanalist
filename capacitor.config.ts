@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.snacktherusher.game',
-  appName: 'Snack The Rusher',
+  appId: 'com.lezatresepku.app',
+  appName: 'Lezat Resepku',
   webDir: 'dist'
 };
 
