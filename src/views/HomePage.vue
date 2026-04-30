@@ -43,7 +43,7 @@
                 <div v-for="i in 6" :key="i" class="prev-seg" :style="prevSegStyle(i)" />
               </div>
               <div class="badge">ARCADE</div>
-              <h1 class="big-title">NEON<br><em>WORM</em></h1>
+              <h1 class="big-title">SNAKE<br><em>THE Rusher</em></h1>
               <p class="desc">
                 Makan piksel untuk tumbuh<br>
                 Kumpulkan NOS untuk <strong>turbo</strong>!
@@ -129,7 +129,10 @@ let nextDir = { x: 1, y: 0 }
 let foods = []
 let particles = []
 let loopId = null
+let nosStartTime = 0
+let nosDuration = 0 // Duration in ms that NOS should last
 const BASE_SPEED = 175
+const NOS_DURATION_MS = 3000 // NOS lasts 3 seconds
 let speed = BASE_SPEED
 let resizeObserver = null
 
@@ -207,8 +210,10 @@ function activateNos() {
   if (nosBar.value < 100 || nosActive.value) return
   nosActive.value = true
   nosUsed.value++
-  nosBar.value = 0
+  nosBar.value =0
   speed = Math.floor(BASE_SPEED * 0.45)
+  nosStartTime = performance.now()
+  nosDuration = NOS_DURATION_MS
 }
 
 let tickAnim = 0
@@ -456,12 +461,15 @@ function tick() {
 
   // NOS: active until bar depletes gradually
   if (nosActive.value) {
-    // NOS drains while active (no fixed timer)
-    // Each tick drains a small amount
-    nosBar.value = Math.max(0, nosBar.value - 2.5)
-    if (nosBar.value <= 0) {
+    const now = performance.now()
+    const elapsed = now - nosStartTime
+    const remainingPercent = Math.max(0, 1 - (elapsed / nosDuration))
+    nosBar.value = remainingPercent * 100
+    
+    if (elapsed >= nosDuration) {
       nosActive.value = false
       speed = BASE_SPEED
+      nosBar.value = 0
     }
   }
 
