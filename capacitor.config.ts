@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.snackdigger.app',
+  appId: 'com.thesnackeat.app',
   appName: 'The Snack Digger',
   webDir: 'dist'
 };
