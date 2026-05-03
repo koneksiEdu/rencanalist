@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.neonbrickbreaker.app',
+  appId: 'com.theneonbrickbreaker.game',
   appName: 'Neon Brick Breaker',
   webDir: 'dist'
 };
