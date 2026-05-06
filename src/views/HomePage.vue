@@ -1,194 +1,224 @@
 <template>
-  <div class="app-shell">
-    <div class="scanlines" />
+  <div class="shell">
+    <!-- ═══ PARALLAX STARFIELD ═══ -->
+    <canvas ref="starCanvas" class="star-canvas" />
 
-    <!-- ═══════════════ HOME SCREEN ═══════════════ -->
+    <!-- ═══ HOME SCREEN - RETRO ARCADE STYLE ═══ -->
     <transition name="fade">
       <div v-if="screen === 'home'" class="screen home-screen">
-        <div class="logo-wrap">
-          <p class="logo-eyebrow">◈ ARCADE ◈</p>
-          <h1 class="logo-title">NEON<br />Brick BREAKER</h1>
-          <p class="logo-tag">DESTROY ALL BRICKS</p>
-        </div>
-
-        <div class="preview-stage">
-          <div
-            v-for="(b, i) in previewBricks"
-            :key="i"
-            class="preview-brick"
-            :style="{
-              left: b.x + 'px', top: b.y + 'px', width: b.w + 'px',
-              background: b.color + '22', borderColor: b.color,
-              boxShadow: '0 0 8px ' + b.color,
-            }"
-          />
-          <div class="preview-ball" />
-        </div>
-
-        <div class="btn-stack">
-          <button class="btn-primary" @click="startGame">▶ MULAI GAME</button>
-          <button class="btn-secondary" @click="screen = 'help'">CARA BERMAIN</button>
-        </div>
-
-        <div v-if="highScore > 0" class="score-panel">
-          <p class="score-panel-title">◈ HIGH SCORE ◈</p>
-          <div class="score-row">
-            <span>BEST SCORE</span>
-            <span class="val-yellow">{{ highScore }}</span>
-          </div>
-          <div class="score-row" style="border:none">
-            <span>BEST LEVEL</span>
-            <span class="val-pink">{{ bestLevel }}</span>
+        <!-- Top deco -->
+        <div class="arcade-header">
+          <div class="scanline"></div>
+          <div class="crt-glow"></div>
+          <div class="header-badge">
+            <span>✦ ARCADIA ARCADE ✦</span>
+            <span class="badge-flash">INSERT COIN</span>
           </div>
         </div>
 
-        <p class="hint-text">← → ARROW KEY ATAU TOMBOL DI BAWAH</p>
+        <!-- Main Logo Area -->
+        <div class="logo-arena">
+          <div class="logo-glitch" data-text="PADEL">PADEL</div>
+          <div class="logo-buster">
+            <span>B</span><span>U</span><span>S</span><span>T</span><span>E</span><span>R</span>
+          </div>
+          <div class="logo-sub">VER 2.0.77 • NEO TOKYO</div>
+        </div>
+
+        <!-- Preview Arena (different brick style) -->
+        <div class="preview-arena">
+          <div class="preview-stage">
+          </div>
+        </div>
+
+        <!-- Menu Buttons -->
+        <div class="menu-buttons">
+          <button class="arcade-btn primary-btn" @click="startGame">
+            <span class="btn-pixel">▶</span> START <span class="btn-pixel">◀</span>
+          </button>
+          <button class="arcade-btn secondary-btn" @click="screen='help'">
+            <span class="btn-pixel">⍟</span> MANUAL <span class="btn-pixel">⍟</span>
+          </button>
+          <button class="arcade-btn secondary-btn" @click="screen='stats'">
+            <span class="btn-pixel">⍟</span> RECORDS <span class="btn-pixel">⍟</span>
+          </button>
+        </div>
+
+        <div class="credit-line">© 2084 • NEO ARCADIA CORP</div>
       </div>
     </transition>
 
-    <!-- ═══════════════ HELP SCREEN ═══════════════ -->
+    <!-- ═══ STATS SCREEN ═══ -->
     <transition name="slide">
-      <div v-if="screen === 'help'" class="screen help-screen">
-        <div class="help-header">
-          <button class="back-btn" @click="screen = 'home'">←</button>
-          <h2 class="help-title">CARA BERMAIN</h2>
-        </div>
-
-        <div class="help-card">
-          <p class="help-card-title">◈ KONTROL</p>
-          <div class="help-item"><span class="em">⌨️</span><span>Tekan ← → untuk gerakkan paddle di keyboard</span></div>
-          <div class="help-item"><span class="em">👇</span><span>Tombol ← → di layar untuk mobile</span></div>
-          <div class="help-item"><span class="em">▶️</span><span>Tap LAUNCH atau SPACE untuk luncurkan bola</span></div>
-          <div class="help-item"><span class="em">⏸️</span><span>Tombol pause kanan atas untuk jeda</span></div>
-        </div>
-
-        <div class="help-card">
-          <p class="help-card-title">◈ CARA MAIN</p>
-          <div class="help-item"><span class="em">🎯</span><span>Hancurkan semua bata untuk naik level</span></div>
-          <div class="help-item"><span class="em">❤️</span><span>3 nyawa — jangan sampai bola jatuh!</span></div>
-          <div class="help-item"><span class="em">🧱</span><span>Bata merah butuh 2 pukulan untuk hancur</span></div>
-          <div class="help-item"><span class="em">💥</span><span>Combo memberi bonus poin!</span></div>
-        </div>
-
-        <div class="help-card">
-          <p class="help-card-title">◈ POWER-UPS</p>
-          <div class="pu-row"><div class="pu-dot green" /><span><b style="color:var(--g)">WIDE</b> — Paddle melebar 8 detik</span></div>
-          <div class="pu-row"><div class="pu-dot orange" /><span><b style="color:var(--o)">MULTI</b> — Menjadi 3 bola</span></div>
-          <div class="pu-row"><div class="pu-dot purple" /><span><b style="color:var(--v)">SLOW</b> — Bola melambat 5 detik</span></div>
-        </div>
-
-        <button class="btn-primary" style="width:100%;max-width:300px;margin-top:8px" @click="startGame">▶ MULAI SEKARANG</button>
-        <div style="height:24px" />
-      </div>
-    </transition>
-
-    <!-- ═══════════════ GAME SCREEN ═══════════════ -->
-    <transition name="fade">
-      <div v-if="screen === 'game'" class="screen game-screen">
-        <canvas ref="canvas" class="game-canvas" />
-
-        <!-- HUD - FIXED: Best Score sekarang sinkron dengan localStorage -->
-        <div class="hud">
-          <div class="hud-block">
-            <span class="hud-label">SCORE</span>
-            <span class="hud-val">{{ score }}</span>
+      <div v-if="screen==='stats'" class="screen stats-screen">
+        <div class="stats-container">
+          <button class="back-btn-arcade" @click="screen='home'">⌂ BACK</button>
+          
+          <div class="stats-title-wrap">
+            <div class="stats-glitch">RECORDS</div>
+            <div class="stats-glitch-sub">HALL OF FAME</div>
           </div>
-          <div class="hud-block hud-center">
-            <span class="level-badge">LVL {{ level }}</span>
-            <div class="lives-row">
-              <div v-for="i in 3" :key="i" class="life-dot" :class="{ dead: i > lives }" />
+
+          <div class="stats-card">
+            <div class="stats-row">
+              <span class="stats-label">TOP SCORE</span>
+              <span class="stats-value">{{ highScore }}</span>
+            </div>
+            <div class="stats-divider"></div>
+            <div class="stats-row">
+              <span class="stats-label">DEEPEST SECTOR</span>
+              <span class="stats-value">{{ bestLevel }}</span>
             </div>
           </div>
-          <div class="hud-block" style="align-items:flex-end">
-            <button class="pause-btn" @click="togglePause">{{ isPaused ? '▶' : '⏸' }}</button>
+
+          <button class="arcade-btn primary-btn reset-stats" @click="resetStats">
+            <span class="btn-pixel">⟳</span> RESET RECORDS <span class="btn-pixel">⟳</span>
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ═══ HELP SCREEN ═══ -->
+    <transition name="slide">
+      <div v-if="screen==='help'" class="screen help-screen">
+        <div class="help-container">
+          <button class="back-btn-arcade" @click="screen='home'">⌂ BACK</button>
+          
+          <div class="help-title-wrap">
+            <div class="help-glitch">MISSION</div>
+            <div class="help-glitch-sub">BRIEFING</div>
           </div>
 
+          <div class="help-grid">
+            <div class="help-card">
+              <div class="help-card-header">◈ CONTROLS ◈</div>
+              <div class="help-item"><span class="key">◀  ▶</span><span>MOVE PADEL</span></div>
+              <div class="help-item"><span class="key">␣</span><span>SHOOT / PAUSE</span></div>
+              <div class="help-item"><span class="key">⟳</span><span>RETRY</span></div>
+            </div>
+
+            <div class="help-card">
+              <div class="help-card-header">◈ TARGETS ◈</div>
+              <div class="help-item"><span class="badge-red">●</span><span>ARMORED (2 HITS)</span></div>
+              <div class="help-item"><span class="badge-dark">■</span><span>OBSTACLE (INVINCIBLE)</span></div>
+              <div class="help-item"><span class="badge-gold">◆</span><span>GOLDEN (50 PTS)</span></div>
+            </div>
+
+            <div class="help-card">
+              <div class="help-card-header">◈ POWER CELLS ◈</div>
+              <div class="help-item"><span class="pu-ico">🛡</span><span>SHIELD (WIDE PADEL)</span></div>
+              <div class="help-item"><span class="pu-ico">✦</span><span>NOVA (TRIPLE BALL)</span></div>
+              <div class="help-item"><span class="pu-ico">⌛</span><span>WARP (SLOW TIME)</span></div>
+              <div class="help-item"><span class="pu-ico">⚡</span><span>LASER (PIERCE)</span></div>
+              <div class="help-item"><span class="pu-ico">❤</span><span>REPAIR (+1 LIFE)</span></div>
+            </div>
+          </div>
+
+          <button class="arcade-btn primary-btn launch-now" @click="startGame">
+            <span class="btn-pixel">⚡</span> LAUNCH MISSION <span class="btn-pixel">⚡</span>
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ═══ GAME SCREEN - MONOCHROME GAMEBOY STYLE ═══ -->
+    <transition name="fade">
+      <div v-if="screen==='game'" class="screen game-screen">
+        <canvas ref="gameCanvas" class="game-canvas"/>
+
+        <!-- New HUD Design - Gameboy Monochrome -->
+        <div class="hud-new">
+          <div class="hud-score">
+            <span class="label">SCORE</span>
+            <span class="value">{{ String(score).padStart(6,'0') }}</span>
+          </div>
+          <div class="hud-level">
+            <span class="label">SECTOR</span>
+            <span class="value">{{ level }}</span>
+          </div>
+          <div class="hud-lives">
+            <span class="label">LIVES</span>
+            <div class="lives-icons">
+              <span v-for="i in 3" :key="i" class="life-icon" :class="{active:i<=lives}">❤</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Active power-up chips - FIXED: timer display sekarang realtime -->
-        <div class="pu-bar">
-          <span v-if="puWideActive" class="pu-chip green">WIDE {{ puWideTimer.toFixed(0) }}s</span>
-          <span v-if="puMulti" class="pu-chip orange">MULTI BALL</span>
-          <span v-if="puSlowActive" class="pu-chip purple">SLOW {{ puSlowTimer.toFixed(0) }}s</span>
+        <!-- Power-up bar -->
+        <div class="pu-bar-new">
+          <div v-if="puShieldActive" class="pu-tag shield">SHIELD</div>
+          <div v-if="puNova" class="pu-tag nova">NOVA</div>
+          <div v-if="puWarpActive" class="pu-tag warp">WARP</div>
+          <div v-if="puLaserActive" class="pu-tag laser">LASER</div>
         </div>
 
         <!-- Combo flashes -->
-        <div
-          v-for="cf in comboFlashes"
-          :key="cf.id"
-          class="combo-flash"
-          :style="{ top: cf.y + 'px', color: cf.color }"
-        >{{ cf.text }}</div>
+        <div v-for="cf in comboFlashes" :key="cf.id" class="combo-flash-new"
+          :style="{top:cf.y+'px'}">{{ cf.text }}</div>
 
-        <!-- Launch hint -->
+        <!-- Shoot hint -->
         <transition name="fade">
-          <div v-if="waitingLaunch && !isPaused" class="launch-hint">TAP LAUNCH ATAU TEKAN SPACE</div>
+          <div v-if="waitingLaunch && !isPaused" class="launch-hint-new">
+            <span class="hint-arrow">▼▼▼</span> PRESS SHOOT <span class="hint-arrow">▼▼▼</span>
+          </div>
         </transition>
 
-        <!-- ── MOBILE CONTROLS ── -->
-        <div class="mobile-controls">
-          <button
-            class="ctrl-btn"
-            @touchstart.prevent="startMove('left')"
-            @touchend.prevent="stopMove"
-            @mousedown="startMove('left')"
-            @mouseup="stopMove"
-          >◀</button>
-
-          <button
-            class="ctrl-btn launch-btn"
-            @touchstart.prevent="launchBall"
-            @mousedown="launchBall"
-          >LAUNCH</button>
-
-          <button
-            class="ctrl-btn"
-            @touchstart.prevent="startMove('right')"
-            @touchend.prevent="stopMove"
-            @mousedown="startMove('right')"
-            @mouseup="stopMove"
-          >▶</button>
-        </div>
-      </div>
-    </transition>
-
-    <!-- ═══════════════ PAUSE MODAL ═══════════════ -->
-    <transition name="fade">
-      <div v-if="screen === 'game' && isPaused && !showModal" class="modal-overlay">
-        <div class="modal-box info">
-          <span class="modal-icon">⏸</span>
-          <h3 class="modal-title">PAUSED</h3>
-          <p class="modal-sub">GAME DIJEDA</p>
-          <div class="modal-row"><span>SCORE</span><span>{{ score }}</span></div>
-          <div class="modal-row"><span>LEVEL</span><span>{{ level }}</span></div>
-          <div class="modal-row" style="border:none"><span>LIVES</span><span>{{ lives }}</span></div>
-          <div class="modal-btns">
-            <button class="modal-btn primary" @click="togglePause">▶ LANJUTKAN</button>
-            <button class="modal-btn secondary" @click="goHome">MENU UTAMA</button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
-    <!-- ═══════════════ RESULT MODAL ═══════════════ -->
-    <transition name="fade">
-      <div v-if="showModal" class="modal-overlay">
-        <div class="modal-box" :class="modalClass">
-          <span class="modal-icon">{{ modalIcon }}</span>
-          <h3 class="modal-title">{{ modalTitle }}</h3>
-          <p class="modal-sub">{{ modalSub }}</p>
-          <div class="modal-score-big">{{ score }}</div>
-          <div class="modal-row"><span>LEVEL DICAPAI</span><span>{{ level }}</span></div>
-          <div v-if="isNewHigh" class="modal-row" style="border:none">
-            <span>🎉 HIGH SCORE BARU!</span>
-            <span class="val-yellow">{{ score }}</span>
-          </div>
-          <div class="modal-row" style="border:none"><span>BATA HANCUR</span><span>{{ totalDestroyed }}</span></div>
-          <div class="modal-btns">
-            <button class="modal-btn primary" @click="modalAction">
-              {{ modalType === 'levelup' ? '⚡ LEVEL BERIKUTNYA' : '↺ MAIN LAGI' }}
+        <!-- New Touch Controls with Pause button below Shoot -->
+        <div class="touch-controls">
+          <button class="touch-btn left" @touchstart.prevent="startMove('left')" @touchend.prevent="stopMove" @mousedown="startMove('left')" @mouseup="stopMove">
+            <span>◀</span>
+          </button>
+          <div class="center-controls">
+            <button class="touch-btn launch" @touchstart.prevent="launchBall" @mousedown="launchBall">
+              <span>⚡ SHOOT ⚡</span>
             </button>
-            <button class="modal-btn secondary" @click="goHome">MENU UTAMA</button>
+            <button class="touch-btn pause-bottom" @click="togglePause">
+              <span>⏸ PAUSE</span>
+            </button>
+          </div>
+          <button class="touch-btn right" @touchstart.prevent="startMove('right')" @touchend.prevent="stopMove" @mousedown="startMove('right')" @mouseup="stopMove">
+            <span>▶</span>
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ═══ PAUSE MODAL (Gameboy Style) ═══ -->
+    <transition name="fade">
+      <div v-if="screen==='game' && isPaused && !showModal" class="modal-overlay-new">
+        <div class="modal-arcade">
+          <div class="modal-header-pause">⏸ PAUSED ⏸</div>
+          <div class="modal-stats">
+            <div class="stat-line"><span>SCORE</span><span>{{ score }}</span></div>
+            <div class="stat-line"><span>SECTOR</span><span>{{ level }}</span></div>
+            <div class="stat-line"><span>LIVES</span><span>{{ lives }}/3</span></div>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-arcade-btn resume" @click="togglePause">▶ RESUME</button>
+            <button class="modal-arcade-btn abort" @click="goHome">◼ EXIT</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ═══ RESULT MODAL (Gameboy Style) ═══ -->
+    <transition name="fade">
+      <div v-if="showModal" class="modal-overlay-new">
+        <div class="modal-result" :class="modalType">
+          <div class="result-icon">{{ modalIcon }}</div>
+          <div class="result-title">{{ modalTitle }}</div>
+          <div class="result-sub">{{ modalSub }}</div>
+          <div class="result-score">{{ score }}</div>
+          <div v-if="isNewHigh" class="result-record">★ NEW RECORD! ★</div>
+          <div class="result-detail">
+            <span>SECTOR {{ level }}</span>
+            <span>🔰 {{ totalDestroyed }} DESTROYED</span>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-arcade-btn resume" @click="modalAction">
+              {{ modalType==='levelup'?'▶ NEXT SECTOR':'⟳ RETRY' }}
+            </button>
+            <button class="modal-arcade-btn abort" @click="goHome">⌂ MENU</button>
           </div>
         </div>
       </div>
@@ -199,179 +229,234 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
-// ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const COLS = 8
-const ROWS = 6
-const BRICK_PAD = 4
-const BRICK_TOP = 72
-const BRICK_H = 20
-const COLORS = ['#00ffff', '#ff00aa', '#ffff00', '#00ff88', '#ff6600', '#aa00ff']
+// ─── CONSTANTS – MONOCHROME GAMEBOY PALETTE ─────────────────────────────────
+const GAMEBOY_PALETTE = {
+  bg: '#9bbc0f',      // Green typical Gameboy
+  dark: '#306230',    // Dark green
+  mid: '#8bac0f',     // Medium green  
+  light: '#e0f8d0',   // Light green/cream
+  white: '#f8f8f8'    // White
+}
+
+const COLS = 8, ROWS = 6
+const BRICK_PAD = 4, BRICK_TOP = 78, BRICK_H = 20
+
+const BRICK_SHADES = [GAMEBOY_PALETTE.dark, GAMEBOY_PALETTE.mid, GAMEBOY_PALETTE.light, GAMEBOY_PALETTE.bg]
+
+const PU_TYPES = ['shield','nova','warp','laser','repair']
+
+// ─── STARS (parallax) – simplified for monochrome ───────────────────────────
+const starCanvas = ref(null)
+let starCtx = null, starW = 0, starH = 0
+const STAR_LAYERS = [
+  { count:80, speed:0.05, size:0.8, opacity:0.4 },
+  { count:50, speed:0.12, size:1.2, opacity:0.6 },
+  { count:25, speed:0.25, size:1.8, opacity:0.8 },
+]
+let stars = []
+
+function initStars() {
+  const el = starCanvas.value
+  starW = el.width = window.innerWidth
+  starH = el.height = window.innerHeight
+  starCtx = el.getContext('2d')
+  stars = []
+  STAR_LAYERS.forEach((layer, li) => {
+    for (let i = 0; i < layer.count; i++) {
+      stars.push({ 
+        x: Math.random()*starW, 
+        y: Math.random()*starH, 
+        layer: li,
+        speed: layer.speed * (0.7 + Math.random()*0.6), 
+        size: layer.size * (0.6 + Math.random()*0.8),
+        opacity: layer.opacity * (0.4 + Math.random()*0.6)
+      })
+    }
+  })
+}
+
+let starAnimId = null
+function drawStars() {
+  if (!starCtx) return
+  starCtx.clearRect(0,0,starW,starH)
+  
+  starCtx.fillStyle = GAMEBOY_PALETTE.bg
+  starCtx.fillRect(0,0,starW,starH)
+  
+  stars.forEach(s => {
+    s.y += s.speed
+    if (s.y > starH + 10) {
+      s.y = -10
+      s.x = Math.random() * starW
+    }
+    
+    starCtx.save()
+    starCtx.globalAlpha = s.opacity
+    starCtx.fillStyle = GAMEBOY_PALETTE.mid
+    starCtx.beginPath()
+    starCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2)
+    starCtx.fill()
+    starCtx.restore()
+  })
+  
+  starAnimId = requestAnimationFrame(drawStars)
+}
 
 // ─── LEVEL GENERATOR ─────────────────────────────────────────────────────────
 function generateLevel(lv) {
-  const bricks = []
+  const bricks = [], walls = []
+  
   const patterns = [
-    (r, c) => ({ on: true, hp: 1, color: COLORS[r % COLORS.length] }),
-    (r, c) => ({ on: (r + c) % 2 === 0, hp: 1, color: COLORS[(r + c) % COLORS.length] }),
-    (r, c) => { const d = Math.abs(c - Math.floor(COLS / 2)) + r; return { on: d <= 5, hp: r < 2 ? 2 : 1, color: COLORS[r % COLORS.length] } },
-    (r, c) => { const e = r === Math.floor(ROWS / 2) || c === Math.floor(COLS / 2); return { on: e, hp: 2, color: '#ff00aa' } },
-    (r, c) => { const edge = r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1; const inner = r === 2 && c >= 2 && c <= COLS - 3; return { on: edge || inner, hp: edge ? 2 : 1, color: edge ? '#ffff00' : '#00ffff' } },
+    (r,c) => ({ on: true, hp: 1 }),
+    (r,c) => ({ on: (r + c) % 2 === 0, hp: r === 2 ? 2 : 1 }),
+    (r,c) => ({ on: Math.abs(r - 2.5) + Math.abs(c - 3.5) * 0.8 < 3, hp: 1 }),
+    (r,c) => ({ on: r === 0 || r === ROWS-1 || c === 0 || c === COLS-1, hp: 2 }),
+    (r,c) => ({ on: (r * 2 + c) % 3 < 2, hp: r < 2 ? 2 : 1 }),
+    (r,c) => ({ on: Math.random() > 0.2, hp: Math.random() < 0.4 ? 2 : 1 }),
   ]
-  const fn = patterns[Math.min(lv - 1, patterns.length - 1)]
+  
+  const pfn = patterns[Math.min(lv - 1, patterns.length - 1)]
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const b = fn(r, c)
-      if (b.on) bricks.push({ row: r, col: c, hp: b.hp, maxHp: b.hp, color: b.color, active: true, hasPU: Math.random() < 0.12, puType: ['wide', 'multi', 'slow'][Math.floor(Math.random() * 3)] })
+      const b = pfn(r, c)
+      if (b.on) {
+        bricks.push({
+          row: r, col: c, hp: b.hp, maxHp: b.hp, active: true,
+          hasPU: Math.random() < 0.12,
+          puType: PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)]
+        })
+      }
     }
   }
-  return bricks
+  
+  const wallCount = Math.min(lv + 1, 5)
+  const used = new Set()
+  let tries = 0
+  while (walls.length < wallCount && tries < 150) {
+    tries++
+    const row = Math.floor(Math.random() * (ROWS + 1)) + ROWS
+    const col = Math.floor(Math.random() * COLS)
+    const key = `${row}-${col}`
+    if (used.has(key)) continue
+    used.add(key)
+    walls.push({ row, col, active: true })
+  }
+  
+  return { bricks, walls }
 }
 
-// ─── REACTIVE STATE ──────────────────────────────────────────────────────────
+// ─── STATE ───────────────────────────────────────────────────────────────────
 const screen = ref('home')
-const canvas = ref(null)
-const score = ref(0)
-const lives = ref(3)
-const level = ref(1)
-// FIX: HUD Best Score selalu sync dari localStorage
-const highScore = ref(parseInt(localStorage.getItem('nb_hs') || '0'))
-const bestLevel = ref(parseInt(localStorage.getItem('nb_bl') || '1'))
-const isPaused = ref(false)
-const waitingLaunch = ref(true)
-const showModal = ref(false)
-const modalType = ref('gameover')
-const modalTitle = ref('')
-const modalSub = ref('')
-const isNewHigh = ref(false)
-const totalDestroyed = ref(0)
+const gameCanvas = ref(null)
+const score = ref(0), lives = ref(3), level = ref(1)
+const highScore = ref(parseInt(localStorage.getItem('spb_hs') || '0'))
+const bestLevel = ref(parseInt(localStorage.getItem('spb_bl') || '1'))
+const isPaused = ref(false), waitingLaunch = ref(true)
+const showModal = ref(false), modalType = ref('gameover')
+const modalTitle = ref(''), modalSub = ref('')
+const isNewHigh = ref(false), totalDestroyed = ref(0)
 const comboFlashes = ref([])
 
-// FIX: Power-up states dengan proper timer management
-const puWideActive = ref(false)
-const puWideTimer = ref(0)
-const puMulti = ref(false)
-const puSlowActive = ref(false)
-const puSlowTimer = ref(0)
-
-// Preview home
-const previewBricks = ref([])
+const puShieldActive = ref(false), puShieldTimer = ref(0)
+const puNova = ref(false)
+const puWarpActive = ref(false), puWarpTimer = ref(0)
+const puLaserActive = ref(false), puLaserTimer = ref(0)
 
 // ─── COMPUTED ────────────────────────────────────────────────────────────────
-const modalClass = computed(() => modalType.value === 'win' ? 'success' : modalType.value === 'levelup' ? 'info' : 'danger')
-const modalIcon = computed(() => modalType.value === 'win' ? '🏆' : modalType.value === 'levelup' ? '⚡' : '💀')
+const modalIcon = computed(() => {
+  if (modalType.value === 'win') return '🏆'
+  if (modalType.value === 'levelup') return '⚡'
+  return '💀'
+})
+
+// ─── RESET STATS ─────────────────────────────────────────────────────────────
+function resetStats() {
+  highScore.value = 0
+  bestLevel.value = 1
+  localStorage.setItem('spb_hs', '0')
+  localStorage.setItem('spb_bl', '1')
+}
 
 // ─── GAME INTERNALS ──────────────────────────────────────────────────────────
-let ctx = null, animId = null, lastTime = 0
+let ctx = null, animId = null
 let W = 0, H = 0, BRICK_W = 0
-let balls = [], bricks = [], powerups = []
-let combo = 0, flashId = 0
-let lastTimestamp = 0
-
-const paddle = { x: 0, y: 0, w: 0, h: 14, normalWidth: 0 }
-
-// Keyboard + button state
+let balls = [], bricks = [], walls = [], powerups = []
+let combo = 0, flashId = 0, lastTs = 0
+const paddle = { x: 0, y: 0, w: 0, h: 18, normalWidth: 0 }
 const keys = { left: false, right: false }
 const PADDLE_SPEED = 9
 
-// Power-up timer references untuk cleanup
-let wideTimerInterval = null
-let slowTimerInterval = null
-
-function buildPreview() {
-  const vw = Math.min(window.innerWidth, 430)
-  const bw = Math.floor(vw * 0.8 / 5) - 4
-  const off = (vw - (5 * (bw + 4))) / 2
-  previewBricks.value = Array.from({ length: 5 }, (_, i) => ({
-    x: off + i * (bw + 4), y: 8, w: bw, color: COLORS[i],
-  }))
-}
+let shieldIv = null, warpIv = null, laserIv = null
 
 function initCanvas() {
-  const el = canvas.value
+  const el = gameCanvas.value
   const rect = el.parentElement.getBoundingClientRect()
-  W = rect.width; H = rect.height
-  el.width = W; el.height = H
+  W = rect.width
+  H = rect.height
+  el.width = W
+  el.height = H
   ctx = el.getContext('2d')
   BRICK_W = Math.floor((W - 20) / COLS) - BRICK_PAD
-  paddle.normalWidth = W * 0.22
-  paddle.w = puWideActive.value ? W * 0.40 : paddle.normalWidth
+  paddle.normalWidth = Math.max(70, W * 0.22)
+  paddle.w = puShieldActive.value ? W * 0.4 : paddle.normalWidth
   paddle.x = W / 2 - paddle.w / 2
-  paddle.y = H - 120
+  paddle.y = H - 100
 }
 
 function makeBall(extra = false) {
-  const spd = 5 + level.value * 0.45
+  const spd = 5.0 + level.value * 0.2
   return {
-    x: paddle.x + paddle.w / 2,
-    y: paddle.y - 10,
-    r: 8, vx: 0, vy: 0, speed: spd,
-    attached: !extra,
-    dead: false,
-    ...(extra ? { vx: (Math.random() > 0.5 ? 1 : -1) * spd * 0.7, vy: -spd, attached: false } : {}),
+    x: paddle.x + paddle.w / 2, y: paddle.y - 10,
+    r: 6, vx: 0, vy: 0, speed: spd,
+    attached: !extra, dead: false,
+    trail: [],
+    ...(extra ? { vx: (Math.random() > 0.5 ? 1 : -1) * spd * 0.7, vy: -spd, attached: false } : {})
   }
 }
 
 function loadLevel() {
-  bricks = generateLevel(level.value)
-  powerups = []; combo = 0
+  const data = generateLevel(level.value)
+  bricks = data.bricks
+  walls = data.walls
+  powerups = []
+  combo = 0
   balls = [makeBall()]
   waitingLaunch.value = true
 }
 
-// FIX: Reset power-ups dengan clean timer
-function resetPowerups() {
-  if (wideTimerInterval) clearInterval(wideTimerInterval)
-  if (slowTimerInterval) clearInterval(slowTimerInterval)
-  
-  puWideActive.value = false
-  puWideTimer.value = 0
-  puSlowActive.value = false
-  puSlowTimer.value = 0
-  puMulti.value = false
-  
-  if (paddle.normalWidth) {
-    paddle.w = paddle.normalWidth
-  }
+function resetPU() {
+  if (shieldIv) clearInterval(shieldIv)
+  if (warpIv) clearInterval(warpIv)
+  if (laserIv) clearInterval(laserIv)
+  puShieldActive.value = false
+  puShieldTimer.value = 0
+  puNova.value = false
+  puWarpActive.value = false
+  puWarpTimer.value = 0
+  puLaserActive.value = false
+  puLaserTimer.value = 0
+  if (paddle.normalWidth) paddle.w = paddle.normalWidth
 }
 
-function startWideTimer(duration) {
-  if (wideTimerInterval) clearInterval(wideTimerInterval)
-  puWideActive.value = true
-  puWideTimer.value = duration
-  paddle.w = W * 0.40
-  
-  wideTimerInterval = setInterval(() => {
-    if (puWideTimer.value > 0) {
-      puWideTimer.value -= 0.1
-      if (puWideTimer.value <= 0) {
-        puWideActive.value = false
-        paddle.w = paddle.normalWidth
-        if (wideTimerInterval) clearInterval(wideTimerInterval)
-        wideTimerInterval = null
+function startTimer(activeRef, timerRef, ivRef, duration, onEnd) {
+  if (ivRef) clearInterval(ivRef)
+  activeRef.value = true
+  timerRef.value = duration
+  const iv = setInterval(() => {
+    if (timerRef.value > 0) {
+      timerRef.value -= 0.1
+      if (timerRef.value <= 0) {
+        activeRef.value = false
+        onEnd()
+        clearInterval(iv)
       }
     }
   }, 100)
-}
-
-function startSlowTimer(duration) {
-  if (slowTimerInterval) clearInterval(slowTimerInterval)
-  puSlowActive.value = true
-  puSlowTimer.value = duration
-  
-  slowTimerInterval = setInterval(() => {
-    if (puSlowTimer.value > 0) {
-      puSlowTimer.value -= 0.1
-      if (puSlowTimer.value <= 0) {
-        puSlowActive.value = false
-        if (slowTimerInterval) clearInterval(slowTimerInterval)
-        slowTimerInterval = null
-      }
-    }
-  }, 100)
+  return iv
 }
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────────
-function startMove(dir) { keys[dir] = true }
+function startMove(d) { keys[d] = true }
 function stopMove() { keys.left = false; keys.right = false }
 
 function launchBall() {
@@ -380,7 +465,7 @@ function launchBall() {
   balls.forEach(b => {
     if (!b.attached) return
     b.attached = false
-    b.vx = (Math.random() * 0.5 - 0.25) * b.speed
+    b.vx = (Math.random() * 0.6 - 0.3) * b.speed
     b.vy = -b.speed
   })
 }
@@ -389,7 +474,7 @@ function onKeyDown(e) {
   if (screen.value !== 'game') return
   if (e.code === 'ArrowLeft') { e.preventDefault(); keys.left = true }
   if (e.code === 'ArrowRight') { e.preventDefault(); keys.right = true }
-  if (e.code === 'Space') { e.preventDefault(); if (waitingLaunch.value) launchBall(); else togglePause() }
+  if (e.code === 'Space') { e.preventDefault(); waitingLaunch.value ? launchBall() : togglePause() }
   if (e.code === 'Escape') togglePause()
 }
 
@@ -398,26 +483,30 @@ function onKeyUp(e) {
   if (e.code === 'ArrowRight') keys.right = false
 }
 
-// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+// ─── GAME LOOP ───────────────────────────────────────────────────────────────
 function loop(ts) {
-  if (!lastTimestamp) lastTimestamp = ts
-  const dt = Math.min((ts - lastTimestamp) / 16.67, 3)
-  lastTimestamp = ts
-  if (!isPaused.value && screen.value === 'game' && !showModal.value) update(dt)
-  draw()
+  if (!lastTs) lastTs = ts
+  const dt = Math.min((ts - lastTs) / 16.67, 3)
+  lastTs = ts
+  if (!isPaused.value && screen.value === 'game' && !showModal.value) updateGame(dt)
+  drawGame()
   animId = requestAnimationFrame(loop)
 }
 
-function update(dt) {
-  // Paddle movement
+function updateGame(dt) {
   const spd = PADDLE_SPEED * dt
   if (keys.left) paddle.x = Math.max(0, paddle.x - spd)
   if (keys.right) paddle.x = Math.min(W - paddle.w, paddle.x + spd)
-
-  // Balls update
+  
   balls.forEach(b => {
-    if (b.attached) { b.x = paddle.x + paddle.w / 2; b.y = paddle.y - b.r; return }
-    const slow = puSlowActive.value ? 0.5 : 1
+    if (b.attached) {
+      b.x = paddle.x + paddle.w / 2
+      b.y = paddle.y - b.r
+      return
+    }
+    const slow = puWarpActive.value ? 0.45 : 1
+    b.trail.push({ x: b.x, y: b.y })
+    if (b.trail.length > 8) b.trail.shift()
     b.x += b.vx * dt * slow
     b.y += b.vy * dt * slow
     
@@ -425,10 +514,10 @@ function update(dt) {
     if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) }
     if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) }
     
-    // Paddle collision
-    if (b.vy > 0 && b.y + b.r >= paddle.y && b.y + b.r <= paddle.y + paddle.h + 4 && b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
+    if (b.vy > 0 && b.y + b.r >= paddle.y && b.y + b.r <= paddle.y + paddle.h + 4 && 
+        b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
       const hit = (b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2)
-      const angle = hit * 65 * Math.PI / 180
+      const angle = hit * 70 * Math.PI / 180
       b.vx = Math.sin(angle) * b.speed
       b.vy = -Math.abs(Math.cos(angle) * b.speed)
       b.y = paddle.y - b.r
@@ -437,16 +526,36 @@ function update(dt) {
     
     if (b.y - b.r > H) b.dead = true
   })
-
+  
   const alive = balls.filter(b => !b.dead)
   if (alive.length < balls.length && alive.length === 0) {
-    lives.value--; combo = 0; balls = []
-    if (lives.value <= 0) { gameOver(); return }
-    balls = [makeBall()]; waitingLaunch.value = true; return
+    lives.value--
+    combo = 0
+    balls = []
+    if (lives.value <= 0) {
+      gameOver()
+      return
+    }
+    balls = [makeBall()]
+    waitingLaunch.value = true
+    return
   }
   balls = alive
-
-  // Bricks collision
+  
+  walls.forEach(wl => {
+    if (!wl.active) return
+    const wx = 10 + wl.col * (BRICK_W + BRICK_PAD)
+    const wy = BRICK_TOP + wl.row * (BRICK_H + BRICK_PAD)
+    balls.forEach(b => {
+      if (b.attached) return
+      if (b.x + b.r < wx || b.x - b.r > wx + BRICK_W || b.y + b.r < wy || b.y - b.r > wy + BRICK_H) return
+      const ox = Math.abs(b.x - (wx + BRICK_W / 2)) / (BRICK_W / 2)
+      const oy = Math.abs(b.y - (wy + BRICK_H / 2)) / (BRICK_H / 2)
+      if (ox > oy) b.vx = -b.vx
+      else b.vy = -b.vy
+    })
+  })
+  
   bricks.forEach(bk => {
     if (!bk.active) return
     const bx = 10 + bk.col * (BRICK_W + BRICK_PAD)
@@ -454,27 +563,37 @@ function update(dt) {
     balls.forEach(b => {
       if (b.attached) return
       if (b.x + b.r < bx || b.x - b.r > bx + BRICK_W || b.y + b.r < by || b.y - b.r > by + BRICK_H) return
-      bk.hp--; combo++
+      bk.hp--
+      combo++
+      
       if (bk.hp <= 0) {
-        bk.active = false; totalDestroyed.value++
-        const pts = bk.color === '#ffff00' ? 50 : bk.maxHp > 1 ? 20 : 10
+        bk.active = false
+        totalDestroyed.value++
+        const pts = bk.maxHp > 2 ? 35 : (bk.maxHp > 1 ? 20 : 10)
         score.value += pts * Math.max(1, Math.floor(combo / 3))
-        if (bk.hasPU) powerups.push({ x: bx + BRICK_W / 2, y: by, type: bk.puType, dead: false })
+        if (bk.hasPU) powerups.push({ x: bx + BRICK_W / 2, y: by, type: bk.puType, dead: false, vy: 2.5 })
         if (combo >= 3) addComboFlash(bx + BRICK_W / 2, by, combo)
       }
-      const ox = Math.abs(b.x - (bx + BRICK_W / 2)) / (BRICK_W / 2)
-      const oy = Math.abs(b.y - (by + BRICK_H / 2)) / (BRICK_H / 2)
-      if (ox > oy) b.vx = -b.vx; else b.vy = -b.vy
+      
+      if (!puLaserActive.value) {
+        const ox = Math.abs(b.x - (bx + BRICK_W / 2)) / (BRICK_W / 2)
+        const oy = Math.abs(b.y - (by + BRICK_H / 2)) / (BRICK_H / 2)
+        if (ox > oy) b.vx = -b.vx
+        else b.vy = -b.vy
+      }
     })
   })
-
-  if (bricks.every(bk => !bk.active)) { nextLevel(); return }
-
-  // Power-up drops
+  
+  if (bricks.every(bk => !bk.active)) {
+    nextLevel()
+    return
+  }
+  
   powerups.forEach(pu => {
-    pu.y += 2.5 * dt
-    if (pu.y >= paddle.y && pu.y <= paddle.y + paddle.h && pu.x >= paddle.x && pu.x <= paddle.x + paddle.w) { 
-      collectPU(pu.type); pu.dead = true 
+    pu.y += pu.vy * dt
+    if (pu.y >= paddle.y && pu.y <= paddle.y + paddle.h && pu.x >= paddle.x && pu.x <= paddle.x + paddle.w) {
+      collectPU(pu.type)
+      pu.dead = true
     }
     if (pu.y > H) pu.dead = true
   })
@@ -482,45 +601,52 @@ function update(dt) {
 }
 
 function collectPU(type) {
-  if (type === 'wide') { startWideTimer(8) }
-  else if (type === 'multi') { 
-    puMulti.value = true; 
-    balls.push(makeBall(true)); 
-    balls.push(makeBall(true)); 
-    setTimeout(() => { puMulti.value = false }, 200) 
+  if (type === 'shield') {
+    startTimer(puShieldActive, puShieldTimer, shieldIv, 8, () => { paddle.w = paddle.normalWidth })
+    paddle.w = W * 0.4
+  } else if (type === 'nova') {
+    puNova.value = true
+    balls.push(makeBall(true))
+    balls.push(makeBall(true))
+    setTimeout(() => puNova.value = false, 200)
+  } else if (type === 'warp') {
+    startTimer(puWarpActive, puWarpTimer, warpIv, 5, () => {})
+  } else if (type === 'laser') {
+    startTimer(puLaserActive, puLaserTimer, laserIv, 4, () => {})
+  } else if (type === 'repair') {
+    lives.value = Math.min(3, lives.value + 1)
   }
-  else if (type === 'slow') { startSlowTimer(5) }
 }
 
 function addComboFlash(x, y, c) {
   const id = flashId++
-  comboFlashes.value.push({ id, y: y + 30, text: `x${c} COMBO!`, color: COLORS[c % COLORS.length] })
-  setTimeout(() => { comboFlashes.value = comboFlashes.value.filter(f => f.id !== id) }, 1000)
+  comboFlashes.value.push({ id, y: y + 30, text: `×${c} COMBO!` })
+  setTimeout(() => { comboFlashes.value = comboFlashes.value.filter(f => f.id !== id) }, 800)
 }
 
-// ─── GAME EVENTS ─────────────────────────────────────────────────────────────
+// ─── EVENTS ──────────────────────────────────────────────────────────────────
 function saveScore() {
   isNewHigh.value = score.value > highScore.value
-  if (isNewHigh.value) { 
+  if (isNewHigh.value) {
     highScore.value = score.value
-    localStorage.setItem('nb_hs', score.value)
+    localStorage.setItem('spb_hs', score.value)
   }
-  if (level.value > bestLevel.value) { 
+  if (level.value > bestLevel.value) {
     bestLevel.value = level.value
-    localStorage.setItem('nb_bl', level.value)
+    localStorage.setItem('spb_bl', level.value)
   }
 }
 
 function nextLevel() {
   saveScore()
-  if (level.value >= 5) { 
+  if (level.value >= 7) {
     modalType.value = 'win'
     modalTitle.value = 'VICTORY!'
-    modalSub.value = 'SEMUA LEVEL SELESAI'
-  } else { 
+    modalSub.value = 'ALL SECTORS COMPLETE'
+  } else {
     modalType.value = 'levelup'
-    modalTitle.value = `LEVEL ${level.value} CLEAR!`
-    modalSub.value = 'LANJUT KE LEVEL BERIKUTNYA'
+    modalTitle.value = `SECTOR ${level.value} CLEARED`
+    modalSub.value = 'ADVANCING TO NEXT SECTOR'
   }
   showModal.value = true
 }
@@ -529,7 +655,7 @@ function gameOver() {
   saveScore()
   modalType.value = 'gameover'
   modalTitle.value = 'GAME OVER'
-  modalSub.value = 'NYAWA HABIS'
+  modalSub.value = 'MISSION FAILED'
   showModal.value = true
 }
 
@@ -537,12 +663,14 @@ function modalAction() {
   showModal.value = false
   if (modalType.value === 'levelup') {
     level.value++
-    resetPowerups()
-    if (!puWideActive.value && paddle.normalWidth) paddle.w = paddle.normalWidth
+    resetPU()
     loadLevel()
   } else {
-    score.value = 0; lives.value = 3; level.value = 1; totalDestroyed.value = 0
-    resetPowerups()
+    score.value = 0
+    lives.value = 3
+    level.value = 1
+    totalDestroyed.value = 0
+    resetPU()
     loadLevel()
   }
   isPaused.value = false
@@ -550,341 +678,860 @@ function modalAction() {
 
 function startGame() {
   screen.value = 'game'
-  score.value = 0; lives.value = 3; level.value = 1; totalDestroyed.value = 0
-  showModal.value = false; isPaused.value = false
-  resetPowerups()
+  score.value = 0
+  lives.value = 3
+  level.value = 1
+  totalDestroyed.value = 0
+  showModal.value = false
+  isPaused.value = false
+  resetPU()
   comboFlashes.value = []
-  nextTick(() => { 
+  nextTick(() => {
     initCanvas()
     loadLevel()
     if (animId) cancelAnimationFrame(animId)
-    lastTimestamp = 0
+    lastTs = 0
     animId = requestAnimationFrame(loop)
   })
 }
 
 function goHome() {
   if (animId) cancelAnimationFrame(animId)
-  resetPowerups()
+  resetPU()
   showModal.value = false
   isPaused.value = false
   screen.value = 'home'
 }
 
-function togglePause() { if (!showModal.value) isPaused.value = !isPaused.value }
+function togglePause() {
+  if (!showModal.value) isPaused.value = !isPaused.value
+}
 
-// ─── DRAW ─────────────────────────────────────────────────────────────────────
-function draw() {
+// ─── DRAW GAME – MONOCHROME GAMEBOY STYLE ───────────────────────────────────
+function drawGame() {
   if (!ctx) return
   ctx.clearRect(0, 0, W, H)
-
-  // Background
-  const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.7)
-  bg.addColorStop(0, 'rgba(0,40,60,0.25)'); bg.addColorStop(1, 'transparent')
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H)
-
-  // Bricks
+  
+  ctx.fillStyle = GAMEBOY_PALETTE.bg
+  ctx.fillRect(0, 0, W, H)
+  
   bricks.forEach(bk => {
     if (!bk.active) return
     const bx = 10 + bk.col * (BRICK_W + BRICK_PAD)
     const by = BRICK_TOP + bk.row * (BRICK_H + BRICK_PAD)
-    ctx.save()
-    ctx.shadowColor = bk.color; ctx.shadowBlur = 10
-    ctx.fillStyle = bk.color + '22'
-    ctx.beginPath(); ctx.roundRect(bx, by, BRICK_W, BRICK_H, 3); ctx.fill()
-    ctx.strokeStyle = bk.color; ctx.lineWidth = 1.5
-    ctx.stroke()
+    
+    const shadeIndex = (bk.maxHp - bk.hp + bk.row) % BRICK_SHADES.length
+    const baseColor = BRICK_SHADES[shadeIndex]
+    
+    ctx.fillStyle = baseColor
+    ctx.fillRect(bx, by, BRICK_W, BRICK_H)
+    
+    ctx.strokeStyle = GAMEBOY_PALETTE.dark
+    ctx.lineWidth = 1
+    ctx.strokeRect(bx, by, BRICK_W, BRICK_H)
+    
     if (bk.maxHp > 1 && bk.hp < bk.maxHp) {
-      ctx.fillStyle = bk.color; ctx.globalAlpha = 0.35
-      ctx.fillRect(bx + 4, by + BRICK_H - 4, (BRICK_W - 8) * (bk.hp / bk.maxHp), 2)
+      ctx.fillStyle = GAMEBOY_PALETTE.light
+      ctx.fillRect(bx + 2, by + BRICK_H - 4, (BRICK_W - 4) * (bk.hp / bk.maxHp), 2)
     }
+    
     if (bk.hasPU) {
-      const pc = { wide: '#00ff88', multi: '#ff6600', slow: '#aa00ff' }[bk.puType]
-      ctx.globalAlpha = 0.85; ctx.fillStyle = pc
-      ctx.beginPath(); ctx.arc(bx + BRICK_W - 8, by + BRICK_H / 2, 3, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = GAMEBOY_PALETTE.light
+      ctx.font = 'bold 10px monospace'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('?', bx + BRICK_W - 8, by + BRICK_H / 2)
     }
-    ctx.restore()
   })
-
-  // Power-ups
+  
+  walls.forEach(wl => {
+    if (!wl.active) return
+    const wx = 10 + wl.col * (BRICK_W + BRICK_PAD)
+    const wy = BRICK_TOP + wl.row * (BRICK_H + BRICK_PAD)
+    
+    ctx.fillStyle = GAMEBOY_PALETTE.dark
+    ctx.fillRect(wx, wy, BRICK_W, BRICK_H)
+    
+    ctx.strokeStyle = GAMEBOY_PALETTE.mid
+    ctx.lineWidth = 1
+    ctx.strokeRect(wx + 2, wy + 2, BRICK_W - 4, BRICK_H - 4)
+    
+    ctx.fillStyle = GAMEBOY_PALETTE.light
+    ctx.font = 'bold 10px monospace'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('█', wx + BRICK_W / 2, wy + BRICK_H / 2)
+  })
+  
+  const puSymbols = { shield: '🛡', nova: '✦', warp: '⌛', laser: '⚡', repair: '❤' }
+  
   powerups.forEach(pu => {
-    const pc = { wide: '#00ff88', multi: '#ff6600', slow: '#aa00ff' }[pu.type]
-    ctx.save(); ctx.shadowColor = pc; ctx.shadowBlur = 14
-    ctx.fillStyle = pc; ctx.beginPath(); ctx.arc(pu.x, pu.y, 7, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = '#000'; ctx.font = 'bold 7px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText({ wide: 'W', multi: 'M', slow: 'S' }[pu.type], pu.x, pu.y)
-    ctx.restore()
+    ctx.fillStyle = GAMEBOY_PALETTE.light
+    ctx.font = '14px monospace'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(puSymbols[pu.type], pu.x, pu.y)
+    ctx.strokeStyle = GAMEBOY_PALETTE.dark
+    ctx.beginPath()
+    ctx.arc(pu.x, pu.y, 10, 0, Math.PI * 2)
+    ctx.stroke()
   })
-
-  // Paddle
-  ctx.save()
-  ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 22
-  const pg = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.w, 0)
-  pg.addColorStop(0, '#00aaff'); pg.addColorStop(0.5, '#00ffff'); pg.addColorStop(1, '#00aaff')
-  ctx.fillStyle = pg; ctx.beginPath(); ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7); ctx.fill()
-  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.roundRect(paddle.x + 6, paddle.y + 2, paddle.w - 12, 3, 2); ctx.fill()
-  ctx.restore()
-
-  // Balls
+  
+  ctx.fillStyle = GAMEBOY_PALETTE.dark
+  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h)
+  ctx.fillStyle = GAMEBOY_PALETTE.light
+  ctx.fillRect(paddle.x + 4, paddle.y + 3, paddle.w - 8, paddle.h - 6)
+  ctx.fillStyle = GAMEBOY_PALETTE.bg
+  ctx.fillRect(paddle.x + paddle.w/2 - 6, paddle.y + 5, 12, 4)
+  
   balls.forEach(b => {
-    ctx.save()
-    ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 22
-    const g = ctx.createRadialGradient(b.x - b.r * 0.3, b.y - b.r * 0.3, 0, b.x, b.y, b.r)
-    g.addColorStop(0, '#fff'); g.addColorStop(0.4, '#00ffff'); g.addColorStop(1, '#0066ff')
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill()
-    ctx.globalAlpha = 0.18; ctx.fillStyle = '#00ffff'
-    ctx.beginPath(); ctx.arc(b.x - b.vx * 2, b.y - b.vy * 2, b.r * 0.65, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
+    b.trail.forEach((t, i) => {
+      ctx.globalAlpha = 0.3 - i * 0.04
+      ctx.fillStyle = GAMEBOY_PALETTE.mid
+      ctx.beginPath()
+      ctx.arc(t.x, t.y, b.r * 0.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    })
+    
+    ctx.fillStyle = GAMEBOY_PALETTE.light
+    ctx.beginPath()
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = GAMEBOY_PALETTE.white
+    ctx.beginPath()
+    ctx.arc(b.x - 2, b.y - 2, 2, 0, Math.PI * 2)
+    ctx.fill()
   })
 }
 
-// roundRect helper
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    this.moveTo(x+r, y);
-    this.lineTo(x+w-r, y);
-    this.quadraticCurveTo(x+w, y, x+w, y+r);
-    this.lineTo(x+w, y+h-r);
-    this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-    this.lineTo(x+r, y+h);
-    this.quadraticCurveTo(x, y+h, x, y+h-r);
-    this.lineTo(x, y+r);
-    this.quadraticCurveTo(x, y, x+r, y);
-    return this;
-  }
-}
-
-// ─── LIFECYCLE ────────────────────────────────────────────────────────────────
+// ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 onMounted(() => {
-  buildPreview()
+  initStars()
+  starAnimId = requestAnimationFrame(drawStars)
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('mouseup', stopMove)
-  window.addEventListener('resize', buildPreview)
+  window.addEventListener('resize', () => {
+    if (starCanvas.value) {
+      starW = starCanvas.value.width = window.innerWidth
+      starH = starCanvas.value.height = window.innerHeight
+      initStars()
+    }
+    if (screen.value === 'game' && ctx) initCanvas()
+  })
 })
 
 onUnmounted(() => {
   if (animId) cancelAnimationFrame(animId)
-  if (wideTimerInterval) clearInterval(wideTimerInterval)
-  if (slowTimerInterval) clearInterval(slowTimerInterval)
+  if (starAnimId) cancelAnimationFrame(starAnimId)
+  if (shieldIv) clearInterval(shieldIv)
+  if (warpIv) clearInterval(warpIv)
+  if (laserIv) clearInterval(laserIv)
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
   window.removeEventListener('mouseup', stopMove)
-  window.removeEventListener('resize', buildPreview)
 })
 </script>
 
 <style scoped>
-/* (Sisakan style sama seperti kode asli Anda, tidak diubah) */
-/* ─── CSS VARIABLES ─── */
-.app-shell {
-  --c: #00ffff;
-  --p: #ff00aa;
-  --y: #ffff00;
-  --g: #00ff88;
-  --o: #ff6600;
-  --v: #aa00ff;
-  --dark: #050510;
-  --panel: #0a0a1f;
-  --grid: rgba(0,255,255,0.04);
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
+* {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shell {
+  --gb-bg: #9bbc0f;
+  --gb-dark: #306230;
+  --gb-mid: #8bac0f;
+  --gb-light: #e0f8d0;
+  --gb-white: #f8f8f8;
+  
   position: relative;
   width: 100%;
   max-width: 430px;
   height: 100dvh;
   margin: 0 auto;
-  background: var(--dark);
+  background: #000;
   overflow: hidden;
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  color: var(--c);
+  font-family: 'VT323', 'Courier New', monospace;
 }
 
-.app-shell::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 30px 30px;
-  pointer-events: none; z-index: 0;
-}
-
-.scanlines {
-  position: absolute; inset: 0; z-index: 5; pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+.star-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .screen {
-  position: absolute; inset: 0; z-index: 10;
-  display: flex; flex-direction: column; align-items: center;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.home-screen { justify-content: center; padding: 24px 20px; gap: 0; }
-.logo-wrap { text-align: center; margin-bottom: 24px; }
-.logo-eyebrow { font-size: 10px; letter-spacing: 6px; color: var(--p); text-shadow: 0 0 10px var(--p); margin-bottom: 6px; }
-.logo-title {
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-size: 44px; font-weight: 900; line-height: 1;
-  background: linear-gradient(135deg, var(--c), var(--p));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  filter: drop-shadow(0 0 18px rgba(0,255,255,0.5));
-  animation: pulseTitle 3s ease-in-out infinite;
-}
-.logo-tag { font-size: 10px; letter-spacing: 3px; color: rgba(0,255,255,0.4); margin-top: 6px; }
-
-@keyframes pulseTitle {
-  0%,100% { filter: drop-shadow(0 0 18px rgba(0,255,255,0.5)); }
-  50%      { filter: drop-shadow(0 0 30px rgba(255,0,170,0.7)); }
+/* ========== HOME SCREEN - GAMEBOY STYLE ========== */
+.home-screen {
+  padding: 20px 16px;
+  background: var(--gb-bg);
 }
 
-.preview-stage { position: relative; width: 100%; height: 100px; margin-bottom: 20px; overflow: hidden; }
-.preview-brick { position: absolute; height: 14px; border-radius: 3px; border: 1px solid; }
-.preview-ball {
-  position: absolute; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--c); box-shadow: 0 0 14px var(--c), 0 0 28px var(--c);
-  bottom: 10px; left: 50%; transform: translateX(-50%);
-  animation: floatBall 2s ease-in-out infinite;
+.arcade-header {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
 }
-@keyframes floatBall { 0%,100% { bottom: 10px; } 50% { bottom: 40px; } }
 
-.btn-stack { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.header-badge {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--gb-dark);
+  border: 2px solid var(--gb-light);
+  font-size: 7px;
+  letter-spacing: 2px;
+  font-family: 'Press Start 2P', monospace;
+  color: var(--gb-light);
+}
 
-.btn-primary {
-  font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; letter-spacing: 3px;
-  color: var(--dark); background: linear-gradient(135deg, var(--c), #00aaff);
-  border: none; border-radius: 6px; padding: 16px 0; cursor: pointer;
-  box-shadow: 0 0 18px rgba(0,255,255,0.35);
-  width: 100%; max-width: 300px; transition: transform .15s, box-shadow .15s;
-  position: relative; overflow: hidden;
+.badge-flash {
+  animation: blink 1s step-end infinite;
+  color: var(--gb-white);
 }
-.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 8px rgba(0,255,255,0.2); }
 
-.btn-secondary {
-  font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 2px;
-  color: var(--p); background: transparent; border: 1px solid var(--p);
-  border-radius: 6px; padding: 12px 0; cursor: pointer;
-  box-shadow: 0 0 8px rgba(255,0,170,0.15);
-  width: 100%; max-width: 300px; transition: all .15s;
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
-.btn-secondary:active { background: rgba(255,0,170,0.08); transform: scale(0.97); }
 
-.score-panel { background: rgba(0,255,255,0.03); border: 1px solid rgba(0,255,255,0.1); border-radius: 8px; padding: 14px 16px; width: 100%; max-width: 300px; margin-top: 20px; }
-.score-panel-title { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 3px; color: var(--y); text-align: center; margin-bottom: 10px; }
-.score-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(0,255,255,0.06); color: rgba(0,255,255,0.6); }
-.val-yellow { color: var(--y); font-family: 'Orbitron', monospace; }
-.val-pink   { color: var(--p); font-family: 'Orbitron', monospace; }
+.logo-arena {
+  text-align: center;
+  margin: 10px 0 20px;
+}
 
-.hint-text { font-size: 9px; letter-spacing: 2px; color: rgba(0,255,255,0.2); margin-top: 16px; text-align: center; }
-.help-screen { padding: 16px 16px 24px; gap: 12px; justify-content: flex-start; }
-.help-header { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; }
-.back-btn { background: transparent; border: none; color: var(--c); font-size: 22px; cursor: pointer; padding: 0; }
-.help-title { font-family: 'Orbitron', monospace; font-size: 17px; font-weight: 900; letter-spacing: 3px; }
-.help-card { background: rgba(0,255,255,0.03); border: 1px solid rgba(0,255,255,0.1); border-radius: 8px; padding: 14px; width: 100%; }
-.help-card-title { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 3px; color: var(--p); margin-bottom: 10px; }
-.help-item { display: flex; gap: 8px; margin-bottom: 6px; font-size: 12px; color: rgba(0,255,255,0.7); line-height: 1.5; }
-.em { font-size: 16px; flex-shrink: 0; }
-.pu-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; color: rgba(0,255,255,0.7); }
-.pu-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-.pu-dot.green  { background: var(--g); box-shadow: 0 0 6px var(--g); }
-.pu-dot.orange { background: var(--o); box-shadow: 0 0 6px var(--o); }
-.pu-dot.purple { background: var(--v); box-shadow: 0 0 6px var(--v); }
-.game-screen { padding: 0; }
-.game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hud {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 20;
-  padding: 10px 14px 6px;
-  background: linear-gradient(to bottom, rgba(5,5,16,0.92), transparent);
-  display: flex; justify-content: space-between; align-items: flex-start;
+.logo-glitch {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--gb-dark);
+  text-shadow: 3px 3px 0 var(--gb-light);
+  letter-spacing: 2px;
 }
-.hud-block { display: flex; flex-direction: column; }
-.hud-center { align-items: center; }
-.hud-label { font-size: 8px; letter-spacing: 2px; color: rgba(0,255,255,0.35); }
-.hud-val { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700; color: var(--c); text-shadow: 0 0 10px var(--c); line-height: 1.1; }
-.level-badge { font-family: 'Orbitron', monospace; font-size: 10px; padding: 2px 10px; border: 1px solid var(--y); border-radius: 20px; color: var(--y); text-shadow: 0 0 8px var(--y); }
-.lives-row { display: flex; gap: 4px; margin-top: 4px; }
-.life-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--p); box-shadow: 0 0 6px var(--p); transition: all .3s; }
-.life-dot.dead { background: rgba(255,0,170,0.1); box-shadow: none; }
-.pause-btn {
-  position: absolute; top: 10px; right: 14px; z-index: 25;
-  background: transparent; border: 1px solid rgba(0,255,255,0.25); border-radius: 6px;
-  color: var(--c); font-size: 14px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+
+.logo-buster {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0;
 }
-.pu-bar { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 20; }
-.pu-chip {
-  font-family: 'Orbitron', monospace; font-size: 9px; padding: 3px 8px;
-  border-radius: 20px; letter-spacing: 1px; animation: chipPulse 1s ease-in-out infinite;
+
+.logo-buster span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--gb-dark);
+  background: var(--gb-light);
+  padding: 2px 4px;
 }
-.pu-chip.green  { background: rgba(0,255,136,0.12); border: 1px solid var(--g); color: var(--g); }
-.pu-chip.orange { background: rgba(255,102,0,0.12); border: 1px solid var(--o); color: var(--o); }
-.pu-chip.purple { background: rgba(170,0,255,0.12); border: 1px solid var(--v); color: var(--v); }
-@keyframes chipPulse { 0%,100% { opacity:1; } 50% { opacity:.55; } }
-.combo-flash {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 900;
-  pointer-events: none; z-index: 30; white-space: nowrap;
-  text-shadow: 0 0 16px currentColor;
-  animation: comboFloat 1s ease-out forwards;
+
+.logo-sub {
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: var(--gb-dark);
+  font-family: 'Press Start 2P', monospace;
+  opacity: 0.7;
 }
-@keyframes comboFloat {
-  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-55px) scale(1.35); }
+
+.preview-arena {
+  margin: 16px 0;
+  width: 100%;
 }
-.launch-hint {
-  position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
-  font-size: 9px; letter-spacing: 2px; color: rgba(0,255,255,0.45);
-  white-space: nowrap; z-index: 20;
-  animation: chipPulse 1.2s infinite;
+
+.arena-label {
+  text-align: center;
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: var(--gb-dark);
+  margin-bottom: 6px;
+  font-family: 'Press Start 2P', monospace;
 }
-.mobile-controls {
-  position: absolute; bottom: 14px; left: 0; right: 0; z-index: 20;
-  display: flex; justify-content: center; align-items: center; gap: 12px;
-  padding: 0 20px;
+
+.preview-stage {
+  position: relative;
+  width: 100%;
+  height: 36px;
+  background: var(--gb-dark);
+  border-radius: 4px;
 }
-.ctrl-btn {
-  font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700;
-  background: rgba(0,255,255,0.07); border: 1px solid rgba(0,255,255,0.25);
-  border-radius: 10px; color: var(--c); cursor: pointer;
-  width: 72px; height: 56px; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 10px rgba(0,255,255,0.1);
-  transition: background .1s, transform .1s;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 260px;
+  margin: 10px 0;
 }
-.ctrl-btn:active { background: rgba(0,255,255,0.18); transform: scale(0.94); }
-.launch-btn {
-  font-size: 10px; letter-spacing: 1px; width: 100px;
-  background: rgba(0,255,255,0.1); border-color: var(--c);
-  color: var(--c); box-shadow: 0 0 12px rgba(0,255,255,0.2);
+
+.arcade-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 14px 0;
+  border: none;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
 }
-.modal-overlay {
-  position: absolute; inset: 0; z-index: 50;
-  background: rgba(5,5,16,0.86); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center; padding: 24px;
+
+.primary-btn {
+  background: var(--gb-dark);
+  border: 2px solid var(--gb-light);
+  color: var(--gb-light);
+  box-shadow: 4px 4px 0 var(--gb-dark);
 }
-.modal-box {
-  background: var(--panel); border-radius: 12px; padding: 28px 22px;
-  width: 100%; max-width: 310px; text-align: center;
-  position: relative; overflow: hidden; border: 1px solid;
+
+.primary-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--gb-dark);
 }
-.modal-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, currentColor, transparent); }
-.modal-box.danger  { border-color: var(--p); color: var(--p); }
-.modal-box.success { border-color: var(--g); color: var(--g); }
-.modal-box.info    { border-color: var(--c); color: var(--c); }
-.modal-icon   { font-size: 44px; display: block; margin-bottom: 10px; }
-.modal-title  { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 900; letter-spacing: 3px; margin-bottom: 4px; }
-.modal-sub    { font-size: 11px; opacity: .55; margin-bottom: 14px; letter-spacing: 1px; }
-.modal-score-big { font-family: 'Orbitron', monospace; font-size: 34px; font-weight: 900; margin: 8px 0 14px; text-shadow: 0 0 18px currentColor; }
-.modal-row    { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.55); }
-.modal-row span:last-child { color: #fff; }
-.modal-btns   { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
-.modal-btn    { font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 2px; border: none; border-radius: 6px; padding: 13px; cursor: pointer; transition: transform .15s; }
-.modal-btn:active { transform: scale(0.97); }
-.modal-btn.primary   { background: linear-gradient(135deg, var(--c), #00aaff); color: var(--dark); box-shadow: 0 0 14px rgba(0,255,255,0.3); }
-.modal-btn.secondary { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
-.fade-enter-active, .fade-leave-active { transition: opacity .3s; }
-.fade-enter-from, .fade-leave-to       { opacity: 0; }
-.slide-enter-active, .slide-leave-active { transition: transform .35s ease, opacity .35s; }
-.slide-enter-from { transform: translateX(100%); opacity: 0; }
-.slide-leave-to   { transform: translateX(-100%); opacity: 0; }
+
+.secondary-btn {
+  background: transparent;
+  border: 2px solid var(--gb-dark);
+  color: var(--gb-dark);
+}
+
+.secondary-btn:active {
+  transform: scale(0.97);
+}
+
+.btn-pixel {
+  font-size: 12px;
+}
+
+.credit-line {
+  margin-top: 16px;
+  font-size: 6px;
+  letter-spacing: 2px;
+  color: var(--gb-dark);
+  opacity: 0.6;
+  font-family: monospace;
+}
+
+/* ========== STATS SCREEN ========== */
+.stats-screen {
+  background: var(--gb-bg);
+  padding: 20px 16px;
+}
+
+.stats-container {
+  width: 100%;
+  max-width: 300px;
+}
+
+.back-btn-arcade {
+  background: var(--gb-dark);
+  border: 2px solid var(--gb-light);
+  color: var(--gb-light);
+  padding: 6px 12px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.stats-title-wrap {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.stats-glitch {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--gb-dark);
+  text-shadow: 2px 2px 0 var(--gb-light);
+}
+
+.stats-glitch-sub {
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--gb-dark);
+  font-family: monospace;
+}
+
+.stats-card {
+  background: var(--gb-dark);
+  border: 2px solid var(--gb-light);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 0;
+}
+
+.stats-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--gb-light);
+}
+
+.stats-value {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--gb-white);
+}
+
+.stats-divider {
+  height: 1px;
+  background: var(--gb-mid);
+  margin: 4px 0;
+}
+
+.reset-stats {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  border: 2px solid var(--gb-dark);
+  color: var(--gb-dark);
+  box-shadow: none;
+}
+
+/* ========== HELP SCREEN ========== */
+.help-screen {
+  background: var(--gb-bg);
+  padding: 16px;
+}
+
+.help-container {
+  width: 100%;
+  max-width: 360px;
+}
+
+.help-title-wrap {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.help-glitch {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--gb-dark);
+  text-shadow: 2px 2px 0 var(--gb-light);
+}
+
+.help-glitch-sub {
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--gb-dark);
+  font-family: monospace;
+}
+
+.help-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.help-card {
+  background: var(--gb-dark);
+  padding: 12px;
+  border-radius: 4px;
+  border: 2px solid var(--gb-light);
+}
+
+.help-card-header {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--gb-light);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.help-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: var(--gb-light);
+  font-family: monospace;
+}
+
+.key {
+  min-width: 45px;
+  color: var(--gb-white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+}
+
+.badge-red, .badge-dark, .badge-gold {
+  min-width: 20px;
+  font-size: 12px;
+}
+
+.badge-red { color: #ff3366; }
+.badge-dark { color: #ff6600; }
+.badge-gold { color: #ffcc00; }
+
+.pu-ico {
+  min-width: 25px;
+  font-size: 12px;
+}
+
+.launch-now {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ========== GAME SCREEN ========== */
+.game-screen {
+  padding: 0;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* HUD - Gameboy Style */
+.hud-new {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--gb-dark);
+  border-bottom: 2px solid var(--gb-light);
+  font-family: 'Press Start 2P', monospace;
+}
+
+.hud-score, .hud-level, .hud-lives {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.label {
+  font-size: 6px;
+  letter-spacing: 2px;
+  color: var(--gb-light);
+}
+
+.value {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--gb-white);
+}
+
+.lives-icons {
+  display: flex;
+  gap: 4px;
+}
+
+.life-icon {
+  font-size: 12px;
+  color: var(--gb-mid);
+}
+
+.life-icon.active {
+  color: var(--gb-light);
+}
+
+/* Power-up bar */
+.pu-bar-new {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 20;
+}
+
+.pu-tag {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  padding: 3px 8px;
+  background: var(--gb-dark);
+  border: 1px solid var(--gb-light);
+  color: var(--gb-light);
+}
+
+/* Combo flash */
+.combo-flash-new {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 30;
+  white-space: nowrap;
+  color: var(--gb-white);
+  text-shadow: 2px 2px 0 var(--gb-dark);
+  animation: comboFloatNew 0.8s ease-out forwards;
+}
+
+@keyframes comboFloatNew {
+  0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(1.2); }
+}
+
+/* Shoot hint */
+.launch-hint-new {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--gb-white);
+  background: var(--gb-dark);
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 20;
+  animation: hintBlink 1s step-end infinite;
+  border: 1px solid var(--gb-light);
+}
+
+@keyframes hintBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.hint-arrow {
+  font-size: 8px;
+  letter-spacing: 4px;
+}
+
+/* Touch Controls with Pause below Shoot */
+.touch-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.touch-btn {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--gb-dark);
+  border: 2px solid var(--gb-light);
+  color: var(--gb-light);
+  padding: 12px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.05s linear;
+  border-radius: 0px;
+}
+
+.touch-btn:active {
+  transform: scale(0.95);
+  background: var(--gb-mid);
+}
+
+.touch-btn.launch {
+  padding: 8px 20px;
+  font-size: 10px;
+}
+
+.touch-btn.pause-bottom {
+  padding: 8px 16px;
+  font-size: 9px;
+  margin-top: 6px;
+}
+
+.center-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ========== MODALS ========== */
+.modal-overlay-new {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-arcade {
+  background: var(--gb-dark);
+  border: 3px solid var(--gb-light);
+  padding: 24px;
+  text-align: center;
+  max-width: 280px;
+  width: 100%;
+}
+
+.modal-header-pause {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--gb-light);
+  margin-bottom: 20px;
+}
+
+.modal-stats {
+  margin: 20px 0;
+}
+
+.stat-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gb-mid);
+  font-size: 10px;
+  color: var(--gb-light);
+  font-family: monospace;
+}
+
+.stat-line span:last-child {
+  color: var(--gb-white);
+  font-weight: bold;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-arcade-btn {
+  flex: 1;
+  padding: 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.1s;
+  border: none;
+}
+
+.modal-arcade-btn.resume {
+  background: var(--gb-mid);
+  color: var(--gb-dark);
+  border: 1px solid var(--gb-light);
+}
+
+.modal-arcade-btn.abort {
+  background: transparent;
+  color: var(--gb-light);
+  border: 1px solid var(--gb-light);
+}
+
+.modal-arcade-btn:active {
+  transform: scale(0.97);
+}
+
+.modal-result {
+  background: var(--gb-dark);
+  border: 3px solid var(--gb-light);
+  padding: 28px 20px;
+  text-align: center;
+  max-width: 300px;
+  width: 100%;
+}
+
+.result-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.result-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 4px;
+  color: var(--gb-light);
+}
+
+.result-sub {
+  font-size: 8px;
+  color: var(--gb-mid);
+  margin-bottom: 16px;
+}
+
+.result-score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--gb-white);
+  margin: 12px 0;
+}
+
+.result-record {
+  font-size: 8px;
+  color: var(--gb-light);
+  margin: 8px 0;
+  animation: recordPulse 1s ease-in-out infinite;
+}
+
+@keyframes recordPulse {
+  0%, 100% { transform: scale(1); letter-spacing: 1px; }
+  50% { transform: scale(1.05); letter-spacing: 2px; }
+}
+
+.result-detail {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 8px;
+  color: var(--gb-mid);
+  margin: 16px 0;
+  font-family: monospace;
+}
+
+/* Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.35s ease, opacity 0.35s;
+}
+.slide-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.slide-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
+}
 </style>
